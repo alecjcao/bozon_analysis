@@ -5,7 +5,15 @@ import re
 from dateutil.parser import parse
 import h5py
 
-ROOT_DIR = 'A:\\heap'
+import platform
+import platform
+name = platform.node()
+if name == 'GLaDOS':
+    ROOT_DIR = 'A:'
+elif name == 'burrito':
+    ROOT_DIR = '/mnt/heap'
+else:
+    ROOT_DIR = 'A:\\heap'
 RAW_DATA_FOLDER = 'Raw Data'
 DATE_STR_FORMAT = '%y%m%d'
 
@@ -13,6 +21,9 @@ class DataHandler():
     def __init__(self):
         self._date = self.get_most_recent_date()
         self._file = self.get_most_recent_file()
+        
+        self.current_data_loaded = False
+        self.data = None
 
     @property
     def date(self):
@@ -32,6 +43,7 @@ class DataHandler():
                 raise ValueError("Invalid date string. Please use 'YYMMDD'.")
         else:
             raise ValueError("Invalid date type. Please use a valid string or datetime.date object.")
+        self.current_data_loaded = False
 
     @property
     def file(self):
@@ -46,6 +58,8 @@ class DataHandler():
             self._file = int(new_file)
         except ValueError:
             raise ValueError("Invalid file number. Please use a valid integer.")
+        self.current_data_loaded = False
+
 
     def get_most_recent_date(self):
         """
@@ -74,5 +88,13 @@ class DataHandler():
     
     def load_data(self):
         data_path = os.path.join(ROOT_DIR, self.date.strftime(DATE_STR_FORMAT), RAW_DATA_FOLDER, f'data_{self.file}.h5')
+        if not os.path.exists(data_path):
+            raise FileNotFoundError(f"Data file not found at {data_path}")
         return h5py.File(data_path, 'r')
+    
+    def get_data(self):
+        if not self.current_data_loaded:
+            self.current_data = self.load_data()
+            self.current_data_loaded = True
+        return self.current_data
         

@@ -6,16 +6,17 @@ from PyQt5.QtCore import Qt
 import logging
 
 from data_handler import DataHandler
-from plot_handler import PlotCanvas
 from gui_logger import QTextEditLogger
-from image_processing.image_processer import ImageProcesser
+from image_processing.image_processor import ImageProcessor
+from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
+from matplotlib.figure import Figure
 
 class MainWindow(QMainWindow):
     def __init__(self):
         ## initialize window
         super().__init__()
         self.setWindowTitle("Data Analyzer")
-        self.setGeometry(100, 100, 800, 600)
+        self.setGeometry(100, 100, 800, 800)
 
         #### set up logging display ####
         # Create a widget for displaying logs
@@ -50,14 +51,15 @@ class MainWindow(QMainWindow):
 
         self.run_analysis_button = QPushButton("Run analysis", self)
         self.analysis_button_label = QLabel('')
+        self.run_analysis_button.clicked.connect(self.run_analysis_button_press)
         self.analysis_button_layout = QVBoxLayout()
         self.analysis_button_layout.addWidget(self.analysis_button_label)
         self.analysis_button_layout.addWidget(self.run_analysis_button)
         self.analysis_button_container = QWidget()
         self.analysis_button_container.setLayout(self.analysis_button_layout)
 
-        #### set up image processer ####
-        self.image_processer = ImageProcesser()
+        #### set up image processor ####
+        self.image_processor = ImageProcessor()
 
         self.enable_disable_crop_button = QPushButton("Disable crop", self)
         self.enable_disable_crop_button.clicked.connect(self.enable_disable_crop_button_press)
@@ -75,38 +77,40 @@ class MainWindow(QMainWindow):
         self.set_offset_button.clicked.connect(self.set_offset_button_press)
 
         #### set up plot canvas ####
-        self.canvas = PlotCanvas(self)  # Placeholder for Matplotlib canvas
+        self.image_process_figure = Figure(figsize = (6,6))
+        self.image_process_canvas = FigureCanvas(self.image_process_figure)
+        self.image_process_canvas.show()
 
         #### Set up main window ####
-        data_handler_button_layout = QHBoxLayout()
-        data_handler_button_layout.addWidget(self.date_button_container)
-        data_handler_button_layout.addWidget(self.file_button_container)
-        data_handler_button_layout.addWidget(self.analysis_button_container)
-        data_handler_button_container = QWidget()  # Wrap in a QWidget to insert into vertical layout
-        data_handler_button_container.setLayout(data_handler_button_layout) 
+        self.data_handler_button_layout = QHBoxLayout()
+        self.data_handler_button_layout.addWidget(self.date_button_container)
+        self.data_handler_button_layout.addWidget(self.file_button_container)
+        self.data_handler_button_layout.addWidget(self.analysis_button_container)
+        self.data_handler_button_container = QWidget()  # Wrap in a QWidget to insert into vertical layout
+        self.data_handler_button_container.setLayout(self.data_handler_button_layout) 
 
-        image_processor_button_layout = QHBoxLayout()
-        image_processor_button_layout.addWidget(self.enable_disable_crop_button)
-        image_processor_button_layout.addWidget(self.enable_disable_convolution_button)
-        image_processor_button_layout.addWidget(self.enable_all_sites_button)
-        image_processor_button_layout.addWidget(self.set_crop_button)
-        image_processor_button_layout.addWidget(self.set_offset_button)
-        image_processor_button_container = QWidget()  # Wrap in a QWidget to insert into vertical layout
-        image_processor_button_container.setLayout(image_processor_button_layout)
+        self.image_processor_button_layout = QHBoxLayout()
+        self.image_processor_button_layout.addWidget(self.enable_disable_crop_button)
+        self.image_processor_button_layout.addWidget(self.enable_disable_convolution_button)
+        self.image_processor_button_layout.addWidget(self.enable_all_sites_button)
+        self.image_processor_button_layout.addWidget(self.set_crop_button)
+        self.image_processor_button_layout.addWidget(self.set_offset_button)
+        self.image_processor_button_container = QWidget()  # Wrap in a QWidget to insert into vertical layout
+        self.image_processor_button_container.setLayout(self.image_processor_button_layout)
 
-        splitter = QSplitter(Qt.Horizontal)
-        splitter.addWidget(self.canvas)
-        splitter.addWidget(self.log_display)
-        splitter.setStretchFactor(0, 1) 
-        splitter.setStretchFactor(1, 1)
+        self.splitter = QSplitter(Qt.Horizontal)
+        self.splitter.addWidget(self.image_process_canvas)
+        self.splitter.addWidget(self.log_display)
+        self.splitter.setStretchFactor(0, 1) 
+        self.splitter.setStretchFactor(1, 1)
 
-        main_layout = QVBoxLayout()
-        main_layout.addWidget(data_handler_button_container)
-        main_layout.addWidget(image_processor_button_container)
-        main_layout.addWidget(splitter)
+        self.main_layout = QVBoxLayout()
+        self.main_layout.addWidget(self.data_handler_button_container)
+        self.main_layout.addWidget(self.image_processor_button_container)
+        self.main_layout.addWidget(self.splitter)
 
         self.central_widget = QWidget()
-        self.central_widget.setLayout(main_layout)
+        self.central_widget.setLayout(self.main_layout)
         self.setCentralWidget(self.central_widget)
 
 
@@ -136,77 +140,54 @@ class MainWindow(QMainWindow):
     #### IMAGE PROCESSOR BUTTONS ####
 
     def enable_disable_crop_button_press(self):
-        self.image_processer.crop_enabled = not self.image_processer.crop_enabled
-        if self.image_processer.crop_enabled:
+        self.image_processor.crop_enabled = not self.image_processor.crop_enabled
+        if self.image_processor.crop_enabled:
             self.enable_disable_crop_button.setText("Disable crop")
         else:
             self.enable_disable_crop_button.setText("Enable crop")
 
     def enable_disable_convolution_button_press(self):
-        self.image_processer.convolution_enabled = not self.image_processer.convolution_enabled
-        if self.image_processer.convolution_enabled:
+        self.image_processor.convolution_enabled = not self.image_processor.convolution_enabled
+        if self.image_processor.convolution_enabled:
             self.enable_disable_convolution_button.setText("Disable convolution")
         else:
             self.enable_disable_convolution_button.setText("Enable convolution")
 
     def enable_all_sites_button_press(self):
-        self.image_processer.all_sites_enabled = not self.image_processer.all_sites_enabled
-        if self.image_processer.all_sites_enabled:
+        self.image_processor.all_sites_enabled = not self.image_processor.all_sites_enabled
+        if self.image_processor.all_sites_enabled:
             self.enable_all_sites_button.setText("Disable all sites")
         else:
             self.enable_all_sites_button.setText("Enable all sites")
 
 
     def set_crop_button_press(self):
-        data = self.data_handler.load_data()
+        data = self.data_handler.get_data()
         try:
-            self.image_processer.select_crop_region(data, self)
+            self.image_processor.select_crop_region(data, self)
         except Exception as e:
             logging.error(f"Error selecting crop region: {e}")
     
     def set_offset_button_press(self):
-        data = self.data_handler.load_data()
+        data = self.data_handler.get_data()
         try:
-            self.image_processer.select_offset(data, self)
+            self.image_processor.select_offset(data, self)
         except Exception as e:
             logging.error(f"Error selecting offset: {e}")
         return
     
     
-
     def run_analysis_button_press(self):
         """Run the analysis and update the GUI with results and plots."""
         try:
-            self.update_analysis()
+            data = self.data_handler.get_data()
+        except FileNotFoundError as e:
+            logging.error(e)
+            return
+        try:
+            self.image_processor.process_images(data, self.image_process_figure)
+            self.image_process_canvas.show()
         except Exception as e:
             logging.error(f"Error running analysis: {e}")
 
-    def update_analysis(self):
-        return
-        # data = self.data_handler.load_data()
-        # try:
-        #     self.image_processer.select_crop_region(data, self)
-        # except Exception as e:
-        #     logging.error(f"Error selecting crop region: {e}")
-
-
-    # def update_analysis(self, file_path):
-    #     """Runs the analysis and updates the GUI with results and plots."""
-    #     analysis_instance = process_new_data(file_path)
-
-    #     # Update text display with results
-    #     results = analysis_instance.run_analysis()
-    #     self.result_display.setText(str(results))
-
-    #     # Generate and display the plot
-    #     fig = analysis_instance.generate_plot()
-    #     self.display_plot(fig)
-
-    # def display_plot(self, fig):
-    #     """Embed the Matplotlib figure into the GUI."""
-    #     if self.canvas:
-    #         self.central_widget.layout().removeWidget(self.canvas)
-    #         self.canvas.deleteLater()
-
-    #     self.canvas = FigureCanvas(fig)
-    #     self.central_widget.layout().addWidget(self.canvas)
+    
