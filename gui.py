@@ -1,13 +1,17 @@
 from PyQt5.QtWidgets import (
-    QMainWindow, QVBoxLayout, QWidget, QTextEdit, QPushButton, QInputDialog, QSplitter, QHBoxLayout, QLabel
+    QMainWindow, QVBoxLayout, QWidget, QTextEdit, QPushButton, 
+    QInputDialog, QSplitter, QHBoxLayout, QLabel, QFileDialog
 )
 from PyQt5.QtCore import Qt
 
 import logging
 
 from data_handler import DataHandler
+from image_processor import ImageProcessor
+from socket_handler import SocketHandler
+from analysis_handler import AnalysisHandler
 from gui_logger import QTextEditLogger
-from image_processing.image_processor import ImageProcessor
+
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 
@@ -18,73 +22,97 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("Data Analyzer")
         self.setGeometry(100, 100, 800, 800)
 
-        #### set up logging display ####
-        # Create a widget for displaying logs
+        self.image_process_figure = Figure(figsize = (6,6))
+
+        self.data_handler = DataHandler()
+        self.analysis_handler = AnalysisHandler(self.data_handler)
+        self.image_processor = ImageProcessor(self.data_handler, self.image_process_figure)
+        self.socket_handler = SocketHandler(self.image_processor, self.analysis_handler)
+        # self.socket_handler.start()
+
+        self.init_ui()
+
+    def init_ui(self):
+        ## logging display
         self.log_display = QTextEdit(self)
         self.log_display.setReadOnly(True)
         self.log_display.setStyleSheet("background-color: black; color: white;")
-        #   Set up logging to the QTextEdit widget
-        log_handler = QTextEditLogger(self.log_display)
-        log_handler.setFormatter(logging.Formatter("%(asctime)s - %(levelname)s - %(message)s"))
-        logging.getLogger().addHandler(log_handler)
+        self.log_handler = QTextEditLogger(self.log_display)
+        self.log_handler.setFormatter(logging.Formatter("%(asctime)s - %(levelname)s - %(message)s"))
+        logging.getLogger().addHandler(self.log_handler)
 
-        #### set up data handler ####
-        self.data_handler = DataHandler()
+        ## figure display
+        self.image_process_canvas = FigureCanvas(self.image_process_figure)
+        self.image_process_canvas.show()
 
+        ## data handler buttons
         self.set_date_button = QPushButton("Set date", self)
-        self.date_button_label = QLabel('Current: ' + self.data_handler.date.strftime('%y%m%d'))
         self.set_date_button.clicked.connect(self.set_date_button_press)
+        self.date_label = QLabel(self.data_handler.date.strftime('%y%m%d'))
+        self.data_handler.date_updated.connect(self.update_date_label)
         self.date_button_layout = QVBoxLayout()
-        self.date_button_layout.addWidget(self.date_button_label)
+        self.date_button_layout.addWidget(self.date_label)
         self.date_button_layout.addWidget(self.set_date_button)
         self.date_button_container = QWidget()
         self.date_button_container.setLayout(self.date_button_layout)
-
         self.set_file_button = QPushButton("Set file", self)
-        self.file_button_label = QLabel('Current: ' + str(self.data_handler.file))
         self.set_file_button.clicked.connect(self.set_file_button_press)
+        self.file_label = QLabel(str(self.data_handler.file))
+        self.data_handler.file_updated.connect(self.update_file_label)
         self.file_button_layout = QVBoxLayout()
-        self.file_button_layout.addWidget(self.file_button_label)
+        self.file_button_layout.addWidget(self.file_label)
         self.file_button_layout.addWidget(self.set_file_button)
         self.file_button_container = QWidget()
         self.file_button_container.setLayout(self.file_button_layout)
-
+        self.process_image_button = QPushButton("Only process images", self)
+        self.process_image_button.clicked.connect(self.process_image_button_press)
         self.run_analysis_button = QPushButton("Run analysis", self)
-        self.analysis_button_label = QLabel('')
         self.run_analysis_button.clicked.connect(self.run_analysis_button_press)
         self.analysis_button_layout = QVBoxLayout()
-        self.analysis_button_layout.addWidget(self.analysis_button_label)
+        self.analysis_button_layout.addWidget(self.process_image_button)
         self.analysis_button_layout.addWidget(self.run_analysis_button)
         self.analysis_button_container = QWidget()
         self.analysis_button_container.setLayout(self.analysis_button_layout)
 
-        #### set up image processor ####
-        self.image_processor = ImageProcessor()
+        ## socket handler buttons
+        self.start_stop_socket_button = QPushButton("Stop socket", self)
+        self.start_stop_socket_button.clicked.connect(self.start_stop_socket_button_press)
+        self.socket_status_label = QLabel('Not connected')
+        self.socket_button_layout = QVBoxLayout()
+        self.socket_button_layout.addWidget(self.socket_status_label)
+        self.socket_button_layout.addWidget(self.start_stop_socket_button)
+        self.socket_button_container = QWidget()
+        self.socket_button_container.setLayout(self.socket_button_layout)
 
+        ## analysis handler buttons
+        self.set_analysis_script_button = QPushButton("Set analysis script", self)
+        self.set_analysis_script_button.clicked.connect(self.set_analysis_script_button_press)
+        self.analysis_script_label = QLabel('None')
+        self.analysis_handler.module_updated.connect(self.update_analysis_script_label)
+        self.set_analysis_script_layout = QVBoxLayout()
+        self.set_analysis_script_layout.addWidget(self.analysis_script_label)
+        self.set_analysis_script_layout.addWidget(self.set_analysis_script_button)
+        self.set_analysis_script_container = QWidget()
+        self.set_analysis_script_container.setLayout(self.set_analysis_script_layout)
+
+        ## image processor buttons
         self.enable_disable_crop_button = QPushButton("Disable crop", self)
         self.enable_disable_crop_button.clicked.connect(self.enable_disable_crop_button_press)
-
         self.enable_disable_convolution_button = QPushButton("Enable convolution", self)
         self.enable_disable_convolution_button.clicked.connect(self.enable_disable_convolution_button_press)
-
         self.enable_all_sites_button = QPushButton("Enable all sites", self)
         self.enable_all_sites_button.clicked.connect(self.enable_all_sites_button_press)
-
         self.set_crop_button = QPushButton("Set crop", self)
         self.set_crop_button.clicked.connect(self.set_crop_button_press)
-
         self.set_offset_button = QPushButton("Set offset", self)
         self.set_offset_button.clicked.connect(self.set_offset_button_press)
-
-        #### set up plot canvas ####
-        self.image_process_figure = Figure(figsize = (6,6))
-        self.image_process_canvas = FigureCanvas(self.image_process_figure)
-        self.image_process_canvas.show()
 
         #### Set up main window ####
         self.data_handler_button_layout = QHBoxLayout()
         self.data_handler_button_layout.addWidget(self.date_button_container)
         self.data_handler_button_layout.addWidget(self.file_button_container)
+        self.data_handler_button_layout.addWidget(self.socket_button_container)
+        self.data_handler_button_layout.addWidget(self.set_analysis_script_container)
         self.data_handler_button_layout.addWidget(self.analysis_button_container)
         self.data_handler_button_container = QWidget()  # Wrap in a QWidget to insert into vertical layout
         self.data_handler_button_container.setLayout(self.data_handler_button_layout) 
@@ -115,16 +143,17 @@ class MainWindow(QMainWindow):
 
 
     #### DATA HANDLER BUTTONS ####
-
     def set_date_button_press(self):
         """Prompt the user for a date."""
         text, ok = QInputDialog.getText(self, "Input Dialog", "Enter date:")
         if ok and text:  # If user presses OK and entered text
             try:
                 self.data_handler.date = text
-                self.date_button_label.setText('Current: ' + self.data_handler.date.strftime('%y%m%d'))
             except Exception as e:
                 logging.error(f"Error setting date: {e}")
+
+    def update_date_label(self):
+        self.date_label.setText(self.data_handler.date.strftime('%y%m%d'))
 
     def set_file_button_press(self):
         """Prompt the user for a file number."""
@@ -132,13 +161,34 @@ class MainWindow(QMainWindow):
         if ok and text:  # If user presses OK and entered text
             try:
                 self.data_handler.file = text
-                self.file_button_label.setText('Current: ' + str(self.data_handler.file))
             except Exception as e:
                 logging.error(f"Error setting file number: {e}")
 
+    def update_file_label(self):
+        self.file_label.setText(str(self.data_handler.file))
+
+    #### SOCKET HANDLER BUTTONS ####
+    def start_stop_socket_button_press(self):
+        if self.socket_handler.running:
+            self.socket_handler.stop()
+            self.start_stop_socket_button.setText("Start socket")
+        else:
+            self.socket_handler.start()
+            self.start_stop_socket_button.setText("Stop socket")
+
+    #### ANALYSIS HANDLER BUTTONS ####
+    def set_analysis_script_button_press(self):
+        script_name, _ = QFileDialog.getOpenFileName(None, "Open File", "analysis_scripts", "Python Scripts (*.py)")
+        if script_name:
+            self.analysis_handler.module_name = script_name
+    
+    def update_analysis_script_label(self,):
+        if self.analysis_handler.module_name is None:
+            self.analysis_script_label.setText('None')
+        else:
+            self.analysis_script_label.setText(self.analysis_handler.module_name)
 
     #### IMAGE PROCESSOR BUTTONS ####
-
     def enable_disable_crop_button_press(self):
         self.image_processor.crop_enabled = not self.image_processor.crop_enabled
         if self.image_processor.crop_enabled:
@@ -162,32 +212,38 @@ class MainWindow(QMainWindow):
 
 
     def set_crop_button_press(self):
-        data = self.data_handler.get_data()
         try:
-            self.image_processor.select_crop_region(data, self)
+            self.image_processor.select_crop_region(self)
         except Exception as e:
             logging.error(f"Error selecting crop region: {e}")
     
     def set_offset_button_press(self):
-        data = self.data_handler.get_data()
         try:
-            self.image_processor.select_offset(data, self)
+            self.image_processor.select_offset(self)
         except Exception as e:
             logging.error(f"Error selecting offset: {e}")
         return
+    
+    def process_image_button_press(self):
+        try:
+            self.image_processor.process_images()
+        except FileNotFoundError as e:
+            logging.error(e)
+        except Exception as e:
+            logging.error(f"Error running analysis: {e}")
+        return {}
     
     
     def run_analysis_button_press(self):
         """Run the analysis and update the GUI with results and plots."""
         try:
-            data = self.data_handler.get_data()
+            self.image_processor.process_images()
+            result = self.analysis_handler.run_analysis_script()
+            return result
         except FileNotFoundError as e:
             logging.error(e)
-            return
-        try:
-            self.image_processor.process_images(data, self.image_process_figure)
-            self.image_process_canvas.show()
         except Exception as e:
             logging.error(f"Error running analysis: {e}")
+        return {}
 
     

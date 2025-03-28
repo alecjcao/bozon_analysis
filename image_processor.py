@@ -6,6 +6,7 @@ from scipy import sparse
 from scipy.optimize import minimize
 from scipy.signal import savgol_filter, find_peaks
 
+import datetime
 import xarray as xr
 
 import logging
@@ -52,7 +53,7 @@ def get_gauss(subpixel_shift):
     return gauss_y[:,None]*gauss_x[None,:]
 
 class ImageProcessor:
-    def __init__(self):
+    def __init__(self, data_handler, figure):
         # self._sigma = 1.4
         # self._kernel_size = 9
         # self.kernel = np.arange(-(self.kernel_size//2), self.kernel_size//2+1)
@@ -67,6 +68,13 @@ class ImageProcessor:
         self.offset_switch = np.array([0, 0])  # holds value for switching between crop and uncropped mode
 
         self._default_threshold = 10
+
+        self.data_handler = data_handler
+        self.figure = figure
+
+        ImageProcessor.get_masks(LOAD_POINTS, IMAGE_SIZE)
+        ImageProcessor.get_counts(np.zeros(IMAGE_SIZE), LOAD_POINTS)
+        ImageProcessor.get_convolution_matrix(LOAD_POINTS, True)
 
     #### PROPERTIES ####
 
@@ -227,8 +235,9 @@ class ImageProcessor:
 
     #### MAIN IMAGE PROCESSING PROCEDURE ####
 
-    def process_images(self, data, fig):
+    def process_images(self):
         ## Unpack data
+        data = self.data_handler.get_raw_data()
         pics_per_rep = data['Andor']['Pictures-Per-Repetition'][0]
         images = np.array(data['Andor']['Pictures'], dtype = float)
         images = images.reshape((-1, pics_per_rep, IMAGE_SIZE[0], IMAGE_SIZE[1]))
@@ -311,10 +320,10 @@ class ImageProcessor:
         detections = np.zeros((pics_per_rep, images.shape[0], max_num_sites), dtype = np.float64)
         thresholds = np.zeros(pics_per_rep, dtype = np.float64)
         for j in range(pics_per_rep):
-            y, x = np.histogram(counts[j].flatten(), bins = 200)
+            y, x = np.histogram(counts[j].flatten(), bins = range(-20, 100))
             x = x[:-1] + (x[1]-x[0])/2
             yfp = savgol_filter(np.log10(y+1), 20, 4, mode = 'nearest')
-            res = find_peaks(-yfp, prominence = 0.2)
+            res = find_peaks(-yfp, prominence = 0.3)
             if len(res[0]) > 0:
                 threshold = x[res[0][np.argmax(res[1]['prominences'])]]
             else:
@@ -323,30 +332,33 @@ class ImageProcessor:
             thresholds[j] = threshold
 
         ## plot image processing results
-        fig.clf()
-        ax = fig.subplots(2,2)
+        self.figure.clf()
+        self.figure.suptitle(self.data_handler.date.strftime('%y%m%d') + ' File' + str(self.data_handler.file))
+        ax = self.figure.subplots(2,2)
         ax[0,0].imshow(np.mean(images, axis = (0,1)))
         ax[0,0].plot(LOAD_POINTS[:,1]+np.mean(fitted_shifts[:,1]), LOAD_POINTS[:,0]+np.mean(fitted_shifts[:,0]), 'r.', ms = 1)
         ax[0,1].plot(fitted_shifts[:,1], label = 'x')
         ax[0,1].plot(fitted_shifts[:,0], label = 'y')
         ax[0,1].legend()
         for i in range(pics_per_rep):
-            h = ax[1,0].hist(counts[i].flatten(), bins = 50)
+            h = ax[1,0].hist(counts[i].flatten(), bins = range(-20, 100), alpha = 0.5)
             ax[1,0].axvline(thresholds[i], color = h[-1][-1].get_facecolor())
         ax[1,0].set_yscale('log')
+        ax[1,0].set_xlim(-20, 100)
         ax[1,1].plot(np.mean(detections[0], axis = -1), label = 'fill')
         ax[1,1].plot(np.nansum(detections[-1], axis = -1)/np.nansum(detections[-2], axis = -1), label = 'survival')
         ax[1,1].legend()
         ax[1,1].set_ylim(-.05, 1.05)
-    
-        ## export results to xarray
+        self.figure.tight_layout()
 
-
-        return
+        ds = self.export_to_xarray(data, detections, fitted_shifts, target_points)
+        self.data_handler.save_processed_dataset(ds)
+        self.data_handler.save_image_processing_fig(self.figure)
         
     #### 
     
-    def select_crop_region(self, data, parent):
+    def select_crop_region(self, parent):
+        data = self.data_handler.get_raw_data()
         if not self.crop_enabled:
             logging.warning('Enable crop to select crop roi.')
             return
@@ -366,7 +378,8 @@ class ImageProcessor:
         else:
             logging.warning("No crop region selected.")
 
-    def select_offset(self, data, parent):
+    def select_offset(self, parent):
+        data = self.data_handler.get_raw_data()
         pics_per_rep = data['Andor']['Pictures-Per-Repetition'][0]
         images = np.array(data['Andor']['Pictures'])
         images = images.reshape((-1, pics_per_rep, IMAGE_SIZE[0], IMAGE_SIZE[1]))
@@ -388,3 +401,67 @@ class ImageProcessor:
                 self.offset_switch = np.array([point[1]-self.roi[0], point[0]-self.roi[2]])
         else:
             logging.warning("No crop region selected.")
+
+    def export_to_xarray(self, data, detections, shifts, target_points):
+        # prepare global attributes shared across all images
+        date = ''.join([x.decode('UTF-8') for x in data['Miscellaneous']['Run-Date']])
+        time = ''.join([x.decode('UTF-8') for x in data['Miscellaneous']['Time-Of-Logging']])
+        dt = datetime.datetime.strptime(' '.join((
+            date, time[:-1])), "%Y-%m-%d %H:%M:%S")
+
+        global_attrs = {
+                'experiment_datetime': dt,
+                'file_number': self.data_handler.file,
+                'target_x': target_points[:, 0],
+                'target_y': target_points[:, 1],
+            }
+        
+        # figure out constant vs variable parameters
+        variables = data['Master-Parameters']['Variables']
+        repetitions = data['Master-Parameters']['Repetitions'][0]
+        key_name = []
+        key = []
+        for name in variables.keys():
+            variable = variables[name]
+            if variable.attrs['Constant'][0]:
+                global_attrs[name] = variable[0]
+            else:
+                key_name.append(name)
+                key.append(np.array(variable))
+        global_attrs['key_names'] = key_name
+        data_export = []
+
+        for i in range(detections.shape[1]):
+            load = detections[0, i, :16*24].astype(bool)
+            target_fill = detections[-2, i, :len(target_points)].astype(bool)
+            target_second = detections[-1, i, :len(target_points)].astype(bool)
+            shiftx, shifty = shifts[i]
+
+            datum = {
+                'load': load,
+                'fill': target_fill,
+                'second': target_second,
+                'shiftx': shiftx,
+                'shifty': shifty
+            }
+            datum.update(**global_attrs)
+
+            for j, name in enumerate(key_name):
+                datum[name] = key[j][i//repetitions]
+
+            data_export.append(datum)
+
+        # aggregate data in a format compatible with xarray
+        data_export_xr = {}
+        columns = data_export[0].keys()
+        for key in columns:
+            data_export_xr[key] = {'dims': ['id'], 'data': []}
+        for key in ('load', 'fill', 'second', 'target_x', 'target_y'):
+            data_export_xr[key]['dims'] = ['id', 'ind']
+        data_export_xr['key_names']['dims'] = ['id', 'variables']
+        for datum in data_export:
+            for key in columns:
+                data_export_xr[key]['data'].append(datum[key])
+        
+        ds = xr.Dataset.from_dict(data_export_xr)
+        return ds
