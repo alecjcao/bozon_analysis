@@ -2,7 +2,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.optimize import curve_fit
 from analysis_scripts.helper_library import fit_funcs
-import time
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 def main(ds):
@@ -14,7 +13,7 @@ def main(ds):
 
     result = {}
 
-    if len(key) == 0:
+    if key[0] == 'No-Variation':
         mean_survival_site = np.nanmean(survival, axis = 0)
         fig = plt.figure(figsize = (5,4))
         ax = fig.add_subplot(111)

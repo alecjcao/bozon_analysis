@@ -16,13 +16,13 @@ if name == 'GLaDOS':
     BACKUP_DIR = 'S:'
 elif name == 'burrito':
     ROOT_DIR = '/mnt/heap'
-    BACKUP_DIR = '/mnt/jilafile/strontium_archive_uncompressed'
+    BACKUP_DIR = '/mnt/jilafile/strontium_archive_uncompressed/Raw Data'
 elif name == 'PAL9000':
     ROOT_DIR = 'A:\\heap'
-    BACKUP_DIR = 'S:\\kaufman\\archive\\strontium_archive_uncompressed'
+    BACKUP_DIR = 'S:\\kaufman\\archive\\strontium_archive_uncompressed\\Raw Data'
 else:
     ROOT_DIR = 'A:\\heap'
-    BACKUP_DIR = 'S:\\archive\\strontium_archive_uncompressed'
+    BACKUP_DIR = 'S:\\archive\\strontium_archive_uncompressed\\Raw Data'
 RAW_DATA_FOLDER = 'Raw Data'
 PROCESSED_DATA_FOLDER = 'Processed Data'
 SAVE_FOLDER = 'autoanalysis_results'
@@ -127,9 +127,6 @@ class DataHandler(QObject):
         return self.raw_data
     
     def save_processed_dataset(self, ds):
-        if not self.current_data_path.startswith(ROOT_DIR):
-            logging.warning("Data from archive. Cannot save processed data.")
-            return
         processed_data_path = os.path.join(ROOT_DIR, SAVE_FOLDER, self.date.strftime('%Y'), self.date.strftime('%y%m'),
             self.date.strftime(DATE_STR_FORMAT), PROCESSED_DATA_FOLDER, f'data_{self.file}.nc')
         os.makedirs(os.path.dirname(processed_data_path), exist_ok=True)

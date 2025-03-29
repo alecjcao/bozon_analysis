@@ -16,7 +16,7 @@ def main(ds):
     ax = fig.add_subplot(111)
     result = {}
 
-    if len(key) == 0:
+    if key[0] == 'No-Variation':
         mean_survival_site = np.nanmean(survival, axis = 0)
         im = ax.imshow(mean_survival_site.reshape(24, 16), 
                        vmin = max(0,np.min(mean_survival_site)), vmax = min(1,np.max(mean_survival_site)), cmap = 'Blues')

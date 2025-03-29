@@ -274,7 +274,8 @@ class ImageProcessor:
 
         ## Determine whether rearrangement was executed
         if not self.all_sites_enabled:
-            rerng_in_master = check_rearrangement_in_master_script(data['Master-Parameters']['Master-Script'][:])
+            rerng_in_master, trigger_count = check_rearrangement_in_master_script(data['Master-Parameters']['Master-Script'][:],
+                data['Master-Parameters']['Functions'])
             if 'rearranger_active' in data['Gmoog-Parameters'].keys():
                 rerng_active = bool(data['Gmoog-Parameters']['rearranger_active'][0])
             else:
@@ -285,7 +286,8 @@ class ImageProcessor:
                 rerng_enabled = True
             rearranged = rerng_in_master and rerng_active and rerng_enabled
             if rearranged:
-                target_points = POINTS[get_target_array(data['Gmoog-Parameters']['gmoog_script']),:]
+                gmoog_script = data['Gmoog-Parameters']['Gmoog-Script'][:]
+                target_points = POINTS[get_target_array(gmoog_script, trigger_count),:]
             else:
                 target_points = LOAD_POINTS
         else:
@@ -336,7 +338,7 @@ class ImageProcessor:
         self.figure.suptitle(self.data_handler.date.strftime('%y%m%d') + ' File' + str(self.data_handler.file))
         ax = self.figure.subplots(2,2)
         ax[0,0].imshow(np.mean(images, axis = (0,1)))
-        ax[0,0].plot(LOAD_POINTS[:,1]+np.mean(fitted_shifts[:,1]), LOAD_POINTS[:,0]+np.mean(fitted_shifts[:,0]), 'r.', ms = 1)
+        ax[0,0].plot(target_points[:,1]+np.mean(fitted_shifts[:,1]), target_points[:,0]+np.mean(fitted_shifts[:,0]), 'r.', ms = 1)
         ax[0,1].plot(fitted_shifts[:,1], label = 'x')
         ax[0,1].plot(fitted_shifts[:,0], label = 'y')
         ax[0,1].legend()
@@ -428,7 +430,10 @@ class ImageProcessor:
             else:
                 key_name.append(name)
                 key.append(np.array(variable))
-        global_attrs['key_names'] = key_name
+        if len(key_name) > 0:
+            global_attrs['key_names'] = key_name
+        else:
+            global_attrs['key_names'] = ['No-Variation']
         data_export = []
 
         for i in range(detections.shape[1]):
@@ -447,6 +452,8 @@ class ImageProcessor:
             datum.update(**global_attrs)
 
             for j, name in enumerate(key_name):
+                if name == 'No-Variation':
+                    break
                 datum[name] = key[j][i//repetitions]
 
             data_export.append(datum)
@@ -456,8 +463,9 @@ class ImageProcessor:
         columns = data_export[0].keys()
         for key in columns:
             data_export_xr[key] = {'dims': ['id'], 'data': []}
-        for key in ('load', 'fill', 'second', 'target_x', 'target_y'):
-            data_export_xr[key]['dims'] = ['id', 'ind']
+        data_export_xr['load']['dims'] = ['id', 'ind_load']
+        for key in ('fill', 'second', 'target_x', 'target_y'):
+            data_export_xr[key]['dims'] = ['id', 'ind']    
         data_export_xr['key_names']['dims'] = ['id', 'variables']
         for datum in data_export:
             for key in columns:
