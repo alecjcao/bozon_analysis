@@ -238,7 +238,6 @@ class ImageProcessor:
     #### MAIN IMAGE PROCESSING PROCEDURE ####
 
     def process_images(self):
-        start = time.time()
         ## Unpack data
         data, images = self.data_handler.get_raw_data()
         pics_per_rep = data['Andor']['Pictures-Per-Repetition'][0]
@@ -259,9 +258,6 @@ class ImageProcessor:
         if self.crop_enabled:
             images =  images[:, :, self.roi[0]:self.roi[1], self.roi[2]:self.roi[3]]
 
-        end = time.time()
-        logging.warning(f'Image preprocess: {end-start:.3f} seconds')
-
         ## Pre-detect tweezer position jumps from Chimera data
         try:
             if data['Gmoog-Parameters']['auto-offset-active']:
@@ -277,7 +273,6 @@ class ImageProcessor:
             xjumps = np.zeros(images.shape[0]-1)
             yjumps = np.zeros(images.shape[0]-1)
 
-        start = time.time()
         ## Determine whether rearrangement was executed
         if not self.all_sites_enabled:
             rerng_in_master, trigger_count = check_rearrangement_in_master_script(data['Master-Parameters']['Master-Script'][:],
@@ -299,10 +294,6 @@ class ImageProcessor:
         else:
             target_points = ALL_POINTS
 
-        end = time.time()
-        logging.warning(f'Tracking/rearrange evaluation: {end-start:.3f} seconds')
-
-        start = time.time()
         ## Fit array offsets from first image and then get site counts for each image
         fitted_shifts = np.zeros((images.shape[0], 2))
         max_num_sites = max(len(LOAD_POINTS), len(target_points))
@@ -327,17 +318,12 @@ class ImageProcessor:
                         counts[j,i,:len(target_points)] = lsqr(cmat, images[i,j].flatten(), atol = 1e-2, btol = 1e-2, iter_lim = 10)[0] 
                     else:
                         counts[j,i,:len(target_points)] = ImageProcessor.get_counts(images[i,j], target_points + fitted_shifts[i])
-        end = time.time()
-        logging.warning(f'Fit position/get counts: {end-start:.3f} seconds')
 
-        start = time.time()
         ## Fit thresholds and get site occupations
         detections = np.zeros((pics_per_rep, images.shape[0], max_num_sites), dtype = np.float64)
         thresholds = np.zeros(pics_per_rep, dtype = np.float64)
         for j in range(pics_per_rep):
             detections[j], thresholds[j] = self.threshold_counts(counts[j])
-        end = time.time()
-        logging.warning(f'Threshold: {end-start:.3f} seconds')
 
         ## plot image processing results
         self.figure.clf()
