@@ -15,6 +15,9 @@ from image_processing.point_selector import PointSelector
 from image_processing.crop_selector import CropSelector
 from image_processing.chimera_parser import get_target_array, check_rearrangement_in_master_script
 
+from skimage.filters import threshold_minimum
+import time
+
 IMAGE_SIZE = (301, 301)
 TOTAL_PIXELS = np.prod(IMAGE_SIZE)
 CROP_SIZE = (210, 200)
@@ -37,7 +40,6 @@ DXIDYL = POINTS[1,0,1] - POINTS[0,0,1]
 DYIDXL = POINTS[0,1,0] - POINTS[0,0,0]
 ALL_POINTS = POINTS.reshape(48*48,2)
 LOAD_POINTS = POINTS[::2,::3].reshape(24*16,2)
-# ALL_POINTS_EXTENDED
 
 SIGMA = 1.4
 KERNEL_SIZE = 9
@@ -236,16 +238,16 @@ class ImageProcessor:
     #### MAIN IMAGE PROCESSING PROCEDURE ####
 
     def process_images(self):
+        start = time.time()
         ## Unpack data
-        data = self.data_handler.get_raw_data()
+        data, images = self.data_handler.get_raw_data()
         pics_per_rep = data['Andor']['Pictures-Per-Repetition'][0]
-        images = np.array(data['Andor']['Pictures'], dtype = float)
         images = images.reshape((-1, pics_per_rep, IMAGE_SIZE[0], IMAGE_SIZE[1]))
 
         ## Remove anomalous pixels
         anomalous_pixels = images>10000
-        images[anomalous_pixels] = np.nan
         if np.any(anomalous_pixels):
+            images[anomalous_pixels] = np.nan
             logging.warning(f'Removed {np.sum(anomalous_pixels)} anomalous pixels.')
 
         ## Background subtraction
@@ -256,6 +258,9 @@ class ImageProcessor:
         ## Crop images
         if self.crop_enabled:
             images =  images[:, :, self.roi[0]:self.roi[1], self.roi[2]:self.roi[3]]
+
+        end = time.time()
+        logging.warning(f'Image preprocess: {end-start:.3f} seconds')
 
         ## Pre-detect tweezer position jumps from Chimera data
         try:
@@ -272,6 +277,7 @@ class ImageProcessor:
             xjumps = np.zeros(images.shape[0]-1)
             yjumps = np.zeros(images.shape[0]-1)
 
+        start = time.time()
         ## Determine whether rearrangement was executed
         if not self.all_sites_enabled:
             rerng_in_master, trigger_count = check_rearrangement_in_master_script(data['Master-Parameters']['Master-Script'][:],
@@ -293,6 +299,10 @@ class ImageProcessor:
         else:
             target_points = ALL_POINTS
 
+        end = time.time()
+        logging.warning(f'Tracking/rearrange evaluation: {end-start:.3f} seconds')
+
+        start = time.time()
         ## Fit array offsets from first image and then get site counts for each image
         fitted_shifts = np.zeros((images.shape[0], 2))
         max_num_sites = max(len(LOAD_POINTS), len(target_points))
@@ -317,21 +327,17 @@ class ImageProcessor:
                         counts[j,i,:len(target_points)] = lsqr(cmat, images[i,j].flatten(), atol = 1e-2, btol = 1e-2, iter_lim = 10)[0] 
                     else:
                         counts[j,i,:len(target_points)] = ImageProcessor.get_counts(images[i,j], target_points + fitted_shifts[i])
+        end = time.time()
+        logging.warning(f'Fit position/get counts: {end-start:.3f} seconds')
 
+        start = time.time()
         ## Fit thresholds and get site occupations
         detections = np.zeros((pics_per_rep, images.shape[0], max_num_sites), dtype = np.float64)
         thresholds = np.zeros(pics_per_rep, dtype = np.float64)
         for j in range(pics_per_rep):
-            y, x = np.histogram(counts[j].flatten(), bins = range(-20, 100))
-            x = x[:-1] + (x[1]-x[0])/2
-            yfp = savgol_filter(np.log10(y+1), 20, 4, mode = 'nearest')
-            res = find_peaks(-yfp, prominence = 0.3)
-            if len(res[0]) > 0:
-                threshold = x[res[0][np.argmax(res[1]['prominences'])]]
-            else:
-                threshold = self.default_threshold
-            detections[j] = (counts[j] > threshold)
-            thresholds[j] = threshold
+            detections[j], thresholds[j] = self.threshold_counts(counts[j])
+        end = time.time()
+        logging.warning(f'Threshold: {end-start:.3f} seconds')
 
         ## plot image processing results
         self.figure.clf()
@@ -360,12 +366,11 @@ class ImageProcessor:
     #### 
     
     def select_crop_region(self, parent):
-        data = self.data_handler.get_raw_data()
+        data, images = self.data_handler.get_raw_data()
         if not self.crop_enabled:
             logging.warning('Enable crop to select crop roi.')
             return
         pics_per_rep = data['Andor']['Pictures-Per-Repetition'][0]
-        images = np.array(data['Andor']['Pictures'])
         images = images.reshape((-1, pics_per_rep, IMAGE_SIZE[0], IMAGE_SIZE[1]))
         image = np.mean(images[:,0], axis = 0)
         
@@ -381,9 +386,8 @@ class ImageProcessor:
             logging.warning("No crop region selected.")
 
     def select_offset(self, parent):
-        data = self.data_handler.get_raw_data()
+        data, images = self.data_handler.get_raw_data()
         pics_per_rep = data['Andor']['Pictures-Per-Repetition'][0]
-        images = np.array(data['Andor']['Pictures'])
         images = images.reshape((-1, pics_per_rep, IMAGE_SIZE[0], IMAGE_SIZE[1]))
         image = np.mean(images[:,0], axis = 0)
 
@@ -473,3 +477,19 @@ class ImageProcessor:
         
         ds = xr.Dataset.from_dict(data_export_xr)
         return ds
+    
+    def threshold_counts(self, counts):
+        counts_max = np.max(counts)
+        counts_min = np.min(counts)
+        if counts_max > counts_min:
+            counts_scaled = (counts - counts_min) / (counts_max - counts_min) * 255
+        else:
+            counts_scaled = np.zeros_like(counts)
+        try:
+            threshold = threshold_minimum(counts_scaled.astype(np.uint8))
+            threshold = threshold / 255 * (counts_max - counts_min) + counts_min
+        except RuntimeError:
+            logging.warning(f"Couldn't find threshold. Using default {self.default_threshold}.")
+            threshold = self.default_threshold     
+        counts_thresholded = counts > threshold
+        return counts_thresholded, threshold

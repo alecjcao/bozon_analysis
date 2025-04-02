@@ -3,6 +3,7 @@ import importlib.util
 import sys
 from pathlib import Path
 from PyQt5.QtCore import QObject, pyqtSignal
+import logging
 
 SCRIPTS_DIR = Path(os.path.join(os.path.dirname(__file__), "analysis_scripts"))
 

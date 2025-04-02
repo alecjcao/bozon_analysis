@@ -50,7 +50,7 @@ def main(ds):
                 popt, _ = curve_fit(fit_funcs.triple_lorentzian, xu, yu, p0 = guess)
                 ax.plot(xp, fit_funcs.triple_lorentzian(xp, *popt), 'r-')
             else:
-                guess = [xu[np.argmax(yu)], .15, np.max(yu), 0.03, 0, .03, .015, 0]
+                guess = [xu[np.argmax(yu)], .15, np.max(yu), 0.04, 0, .03, .015, 0]
                 popt, _ = curve_fit(fit_funcs.triple_lorentzian, xu, yu, p0 = guess)
                 ax.plot(xp, fit_funcs.triple_lorentzian(xp, *popt), 'r-')
     elif len(key) == 2:

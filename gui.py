@@ -25,12 +25,13 @@ class MainWindow(QMainWindow):
         self.image_process_figure = Figure(figsize = (6,6))
 
         self.data_handler = DataHandler()
-        self.analysis_handler = AnalysisHandler(self.data_handler)
         self.image_processor = ImageProcessor(self.data_handler, self.image_process_figure)
-        self.socket_handler = SocketHandler(self.image_processor, self.analysis_handler)
-        # self.socket_handler.start()
+        self.analysis_handler = AnalysisHandler(self.data_handler)
+        self.socket_handler = SocketHandler(self.data_handler, self.image_processor, self.analysis_handler)
 
         self.init_ui()
+
+        self.socket_handler.start()
 
     def init_ui(self):
         ## logging display
@@ -78,6 +79,8 @@ class MainWindow(QMainWindow):
         self.start_stop_socket_button = QPushButton("Stop socket", self)
         self.start_stop_socket_button.clicked.connect(self.start_stop_socket_button_press)
         self.socket_status_label = QLabel('Not connected')
+        self.socket_status_label.setStyleSheet("color: red;")
+        self.socket_handler.socket_status.connect(self.update_socket_status_label)
         self.socket_button_layout = QVBoxLayout()
         self.socket_button_layout.addWidget(self.socket_status_label)
         self.socket_button_layout.addWidget(self.start_stop_socket_button)
@@ -176,6 +179,17 @@ class MainWindow(QMainWindow):
             self.socket_handler.start()
             self.start_stop_socket_button.setText("Stop socket")
 
+    def update_socket_status_label(self):
+        if self.socket_handler.connected:
+            self.socket_status_label.setStyleSheet("color: green;")
+            self.socket_status_label.setText("Connected")
+        elif self.socket_handler.running and not self.socket_handler.connected:
+            self.socket_status_label.setStyleSheet("color: red;")
+            self.socket_status_label.setText("Trying to connect")
+        else:
+            self.socket_status_label.setStyleSheet("color: red;")
+            self.socket_status_label.setText("Not running")
+
     #### ANALYSIS HANDLER BUTTONS ####
     def set_analysis_script_button_press(self):
         script_name, _ = QFileDialog.getOpenFileName(None, "Open File", "analysis_scripts", "Python Scripts (*.py)")
@@ -222,7 +236,6 @@ class MainWindow(QMainWindow):
             self.image_processor.select_offset(self)
         except Exception as e:
             logging.error(f"Error selecting offset: {e}")
-        return
     
     def process_image_button_press(self):
         try:
@@ -231,19 +244,17 @@ class MainWindow(QMainWindow):
             logging.error(e)
         except Exception as e:
             logging.error(f"Error running analysis: {e}")
-        return {}
+
     
     
     def run_analysis_button_press(self):
         """Run the analysis and update the GUI with results and plots."""
         try:
             self.image_processor.process_images()
-            result = self.analysis_handler.run_analysis_script()
-            return result
+            self.analysis_handler.run_analysis_script()
         except FileNotFoundError as e:
             logging.error(e)
         except Exception as e:
             logging.error(f"Error running analysis: {e}")
-        return {}
 
     

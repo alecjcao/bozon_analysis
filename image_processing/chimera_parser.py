@@ -98,7 +98,10 @@ def check_rearrangement_in_master_script(master_script, functions):
     rearrangement_lines = find_all_lines_with_substr(master_script_str, "call rerng_")
     uncommented_lines = [line for line in rearrangement_lines if not line.startswith("%")]
     rearranged = len(uncommented_lines) > 0
-    func_name = find_substring_between(uncommented_lines[0], "call ", "()") + '.func'
-    rearrange_func_str = decode_to_str(functions[func_name][func_name][:]).strip()
-    trigger_count = count_commands(rearrange_func_str, "pulseon: gmmove")
+    if rearranged:
+        func_name = find_substring_between(uncommented_lines[0], "call ", "()") + '.func'
+        rearrange_func_str = decode_to_str(functions[func_name][func_name][:]).strip()
+        trigger_count = count_commands(rearrange_func_str, "pulseon: gmmove")
+    else:
+        trigger_count = 0
     return rearranged, trigger_count

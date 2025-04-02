@@ -5,7 +5,7 @@ import re
 from dateutil.parser import parse
 import h5py
 import xarray as xr
-import logging
+import numpy as np
 
 from PyQt5.QtCore import QObject, pyqtSignal
 
@@ -40,6 +40,7 @@ class DataHandler(QObject):
         self.raw_data_loaded = False
         self.raw_data_path = None
         self.raw_data = None
+        self.raw_images = None
         self.processed_data_loaded = False
         self.processed_data_path = None
         self.processed_data = None
@@ -109,7 +110,7 @@ class DataHandler(QObject):
         most_recent_file = sorted(glob.glob(data_folder+'\\data_*.h5'), key=os.path.getmtime)[-1]
         return int(re.search('data_(.*).h5', most_recent_file).group(1))
     
-    def __load_raw_data(self):
+    def load_raw_data(self):
         data_path = os.path.join(ROOT_DIR, self.date.strftime(DATE_STR_FORMAT), 
             RAW_DATA_FOLDER, f'data_{self.file}.h5')
         if not os.path.exists(data_path):
@@ -119,12 +120,13 @@ class DataHandler(QObject):
                 raise FileNotFoundError(f"Data file not found at {data_path}")
         self.current_data_path = data_path
         self.raw_data = h5py.File(self.current_data_path, 'r')
+        self.raw_images = np.array(self.raw_data['Andor']['Pictures'], dtype = float)
         self.raw_data_loaded = True
     
     def get_raw_data(self):
         if not self.raw_data_loaded:
-            self.__load_raw_data()
-        return self.raw_data
+            self.load_raw_data()
+        return self.raw_data, self.raw_images
     
     def save_processed_dataset(self, ds):
         processed_data_path = os.path.join(ROOT_DIR, SAVE_FOLDER, self.date.strftime('%Y'), self.date.strftime('%y%m'),
@@ -141,7 +143,7 @@ class DataHandler(QObject):
         os.makedirs(os.path.dirname(fig_path), exist_ok=True)
         fig.savefig(fig_path)
 
-    def __load_processed_data(self):
+    def load_processed_data(self):
         processed_data_path = os.path.join(ROOT_DIR, SAVE_FOLDER, self.date.strftime('%Y'), self.date.strftime('%y%m'),
             self.date.strftime(DATE_STR_FORMAT), PROCESSED_DATA_FOLDER, f'data_{self.file}.nc')
         if not os.path.exists(processed_data_path):
@@ -151,7 +153,7 @@ class DataHandler(QObject):
 
     def get_processed_data(self):
         if not self.processed_data_loaded:
-            self.__load_processed_data()
+            self.load_processed_data()
         return self.processed_data
     
     def save_analysis_fig(self, fig):
