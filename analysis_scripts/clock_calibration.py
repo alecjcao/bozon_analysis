@@ -45,12 +45,14 @@ def main(ds):
             popt, _ = curve_fit(fit_funcs.rabi_resonance, xu, yu, p0 = guess)
             xp = np.linspace(np.min(xu), np.max(xu), 100)
             ax.plot(xp, fit_funcs.rabi_resonance(xp, *popt), 'r-')
+            ax.axvline(popt[0], color = 'k', ls = '--')
             result[key[0]] = popt[0]
         if key[0] == 'piquarterstime':
             guess = [xu[np.argmax(yu)], -(np.pi/(4*xu[np.argmax(yu)]))**2, 1]
             popt, _ = curve_fit(fit_funcs.parabola, xu, yu, p0 = guess)
             xp = np.linspace(np.min(xu), np.max(xu), 100)
             ax.plot(xp, fit_funcs.parabola(xp, *popt), 'r-')
+            ax.axvline(popt[0], color = 'k', ls = '--')
             result[key[0]] = popt[0]
     else:
         pass

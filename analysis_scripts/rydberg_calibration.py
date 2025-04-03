@@ -46,6 +46,7 @@ def main(ds):
             popt, _ = curve_fit(fit_funcs.rabi_resonance, xu, yu, p0 = guess)
             xp = np.linspace(np.min(xu), np.max(xu), 100)
             ax.plot(xp, fit_funcs.rabi_resonance(xp, *popt), 'r-')
+            ax.axvline(popt[0], color = 'k', ls = '--')
             result[key[0]] = popt[0]
         if key[0] == 'uvtime':
             xf = fftfreq(len(yu), xu[1]-xu[0])[:len(yu)//2]
@@ -55,7 +56,15 @@ def main(ds):
             popt, _ = curve_fit(fit_funcs.cosine, xu, yu, p0 = guess)
             xp = np.linspace(np.min(xu), np.max(xu), 100)
             ax.plot(xp, fit_funcs.cosine(xp, *popt), 'r-')
+            ax.axvline(1/(2*popt[1]), color = 'k', ls = '--')
             result[key[0]] = 1/(2*popt[1])
+        if key[0] == 'time407':
+            guess = [(yu[0]-yu[1])/yu[0], yu[0], 0]
+            popt, _ = curve_fit(fit_funcs.exponential, xu, yu, p0 = guess)
+            xp = np.linspace(np.min(xu), np.max(xu), 100)
+            ax.plot(xp, fit_funcs.exponential(xp, *popt), 'r-')
+            ax.axvline(popt[0], color = 'k', ls = '--')
+            result[key[0]] = popt[0]*5
     else:
         pass
 

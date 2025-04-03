@@ -53,6 +53,7 @@ def main(ds):
                 guess = [xu[np.argmax(yu)], .15, np.max(yu), 0.04, 0, .03, .015, 0]
                 popt, _ = curve_fit(fit_funcs.triple_lorentzian, xu, yu, p0 = guess)
                 ax.plot(xp, fit_funcs.triple_lorentzian(xp, *popt), 'r-')
+            plt.axvline(popt[0], color = 'k', ls = '--')
     elif len(key) == 2:
         fig, ax = plt.subplots(2, 1, figsize = (5, 8))
         if (key[0] == 'scanax' or key[0] == 'scan2d') and key[1] == 'spec3p1':

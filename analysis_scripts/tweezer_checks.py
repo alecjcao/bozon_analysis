@@ -42,12 +42,14 @@ def main(ds):
             popt, _ = curve_fit(fit_funcs.cosine, xu, yu, p0 = guess)
             xp = np.linspace(np.min(xu), np.max(xu), 100)
             ax.plot(xp, fit_funcs.cosine(xp, *popt), 'r-')
+            ax.axvline(popt[0], color = 'k', ls = '--')
             result['axial_phase_set'] = popt[0]
         if key[0] == 'spec3p1':
             guess = [xu[np.argmax(yu)], .06, np.max(yu), 0.05, 0, .02, .02, 0]
             popt, _ = curve_fit(fit_funcs.triple_lorentzian, xu, yu, p0 = guess)
             xp = np.linspace(np.min(xu), np.max(xu), 100)
             ax.plot(xp, fit_funcs.triple_lorentzian(xp, *popt), 'r-')
+            ax.axvline(popt[0], color = 'k', ls = '--')
             if ds['dr_3p1'].values[0] == 0:
                 if 'offset_689' in ds.keys():
                     current = ds['offset_689'].values[0]

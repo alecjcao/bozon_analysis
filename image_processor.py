@@ -269,7 +269,7 @@ class ImageProcessor:
                 xjumps = np.zeros(images.shape[0]-1)
                 yjumps = np.zeros(images.shape[0]-1)
         except KeyError:
-            logging.warning('Key error accessing auto-offset data.')
+            logging.warning('No auto-offset data.')
             xjumps = np.zeros(images.shape[0]-1)
             yjumps = np.zeros(images.shape[0]-1)
 
@@ -392,7 +392,7 @@ class ImageProcessor:
             else:
                 self.offset_switch = np.array([point[1]-self.roi[0], point[0]-self.roi[2]])
         else:
-            logging.warning("No crop region selected.")
+            logging.warning("No offset selected.")
 
     def export_to_xarray(self, data, detections, shifts, target_points):
         # prepare global attributes shared across all images
