@@ -29,7 +29,7 @@ python -m virtualenv <env-name>
 Activate the environment with
 
 ```shell
-source venv/bin/activate
+source <env-name>/bin/activate
 ```
 
 Install the packages with
