@@ -17,6 +17,9 @@ PORT = 12345
 CLIENT_NAME = 'analysis'
 
 class SocketHandler(QObject):
+    """
+    Handles communication with bozon_manager server for automatically executing data analysis.
+    """
     socket_status = pyqtSignal()
 
     def __init__(self, data_handler, image_processor, analysis_handler):

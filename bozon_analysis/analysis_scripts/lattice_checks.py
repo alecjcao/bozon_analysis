@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.optimize import curve_fit
-from analysis_scripts.helper_library import fit_funcs
+from bozon_analysis.analysis_scripts.helper_library import fit_funcs
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 def main(ds):

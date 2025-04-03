@@ -1,5 +1,5 @@
 from matplotlib.patches import Rectangle
-from image_processing.point_selector import PointSelector
+from bozon_analysis.utils.point_selector import PointSelector
 
 CROP_SIZE = (210, 200)
 

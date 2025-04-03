@@ -55,3 +55,7 @@ If it is the first run being analyzed, set the crop region and the offset. After
 To process the images and save an xarray dataset, run process images only. If an appropriate analysis script already exists, set the analysis script and then run analysis. The interface will only display the result of the image processing. The result of the image processing and the analysis are saved to the heap.
 
 The default image processing method is to mask the image with Gaussian kernels; for denser arrays with signifcant overlap between atoms on the image, the image processing method can be switched to deconvolution instead. By default, the atoms will be assumed to be only located on the loading or target sites depending on whether there was rearrangement or not; enabling all sites will change it to analyze on all 48x48 (85x85) sites when cropped (uncropped).
+
+## Adding new analysis and feedback
+
+For different types of experiments which require different types of analysis, new analysis scripts should be added to the subdirectory bozon_analysis/analysis_scripts. These scripts should have a "main" function which takes an xarray dataset as an argument and returns a tuple consisting of a dictionary and a matplotlib figure. The dictionary should consist of Chimera variable name-value pairs to be updated (empty dictionary if no updates are needed). Note that the dictionary will only be used if the analysis was initiated via communication with the Bozon Manager server, but not if running analysis manually via the user interface.

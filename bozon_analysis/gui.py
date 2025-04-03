@@ -6,16 +6,18 @@ from PyQt5.QtCore import Qt
 
 import logging
 
-from data_handler import DataHandler
-from image_processor import ImageProcessor
-from socket_handler import SocketHandler
-from analysis_handler import AnalysisHandler
-from gui_logger import QTextEditLogger
+from bozon_analysis.data_handler import DataHandler
+from bozon_analysis.image_processor import ImageProcessor
+from bozon_analysis.socket_handler import SocketHandler
+from bozon_analysis.analysis_handler import AnalysisHandler
+from bozon_analysis.gui_logger import QTextEditLogger
 
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 
 class MainWindow(QMainWindow):
+    """Main user interface."""
+
     def __init__(self):
         ## initialize window
         super().__init__()
@@ -192,7 +194,7 @@ class MainWindow(QMainWindow):
 
     #### ANALYSIS HANDLER BUTTONS ####
     def set_analysis_script_button_press(self):
-        script_name, _ = QFileDialog.getOpenFileName(None, "Open File", "analysis_scripts", "Python Scripts (*.py)")
+        script_name, _ = QFileDialog.getOpenFileName(None, "Open File", "bozon_analysis/analysis_scripts", "Python Scripts (*.py)")
         if script_name:
             self.analysis_handler.module_name = script_name
     

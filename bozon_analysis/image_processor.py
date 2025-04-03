@@ -11,12 +11,11 @@ import xarray as xr
 
 import logging
 
-from image_processing.point_selector import PointSelector
-from image_processing.crop_selector import CropSelector
-from image_processing.chimera_parser import get_target_array, check_rearrangement_in_master_script
+from bozon_analysis.utils.point_selector import PointSelector
+from bozon_analysis.utils.crop_selector import CropSelector
+from bozon_analysis.utils.chimera_parser import get_target_array, check_rearrangement_in_master_script
 
 from skimage.filters import threshold_minimum
-import time
 
 IMAGE_SIZE = (301, 301)
 TOTAL_PIXELS = np.prod(IMAGE_SIZE)
@@ -58,10 +57,10 @@ def get_gauss(subpixel_shift):
     return gauss_y[:,None]*gauss_x[None,:]
 
 class ImageProcessor:
+    """
+    Processes images from raw data and formats into processed xarray dataset
+    """
     def __init__(self, data_handler, figure):
-        # self._sigma = 1.4
-        # self._kernel_size = 9
-        # self.kernel = np.arange(-(self.kernel_size//2), self.kernel_size//2+1)
 
         self._crop_enabled = True
         self._deconvolution_enabled = False
@@ -109,35 +108,6 @@ class ImageProcessor:
     def all_sites_enabled(self, new_state):
         self._all_sites_enabled = new_state
 
-    # @property
-    # def kernel_size(self):
-    #     return self._kernel_size
-    
-    # @kernel_size.setter
-    # def kernel_size(self, new_size):
-    #     try:
-    #         if int(new_size) % 2 == 1:
-    #             self._kernel_size = int(new_size)
-    #             self.kernel = np.arange(-(self.kernel_size//2), self.kernel_size//2+1)
-    #         else:
-    #             raise ValueError("Kernel size must be an odd integer.")
-    #     except ValueError:
-    #         raise ValueError("Kernel size must an odd integer.")
-        
-    # @property
-    # def sigma(self):
-    #     return self._sigma
-    
-    # @sigma.setter
-    # def sigma(self, new_sigma):
-    #     try:
-    #         if float(new_sigma) > 0:
-    #             self._sigma = float(new_sigma)
-    #         else:
-    #             raise ValueError("Sigma must be a positive number.")
-    #     except ValueError:
-    #         raise ValueError("Sigma must be a positive number.")
-        
     @property
     def default_threshold(self):
         return self._default_threshold

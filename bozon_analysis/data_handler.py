@@ -29,6 +29,9 @@ SAVE_FOLDER = 'autoanalysis_results'
 DATE_STR_FORMAT = '%y%m%d'
 
 class DataHandler(QObject):
+    """
+    Handles loading and saving of data and figures.
+    """
     date_updated = pyqtSignal(datetime.datetime)
     file_updated = pyqtSignal(int)
 

@@ -1,5 +1,5 @@
 from PyQt5.QtWidgets import QApplication
-from gui import MainWindow
+from bozon_analysis.gui import MainWindow
 import sys
 import logging
 

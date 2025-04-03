@@ -7,6 +7,9 @@ from PyQt5.QtCore import QObject, pyqtSignal
 SCRIPTS_DIR = Path(os.path.join(os.path.dirname(__file__), "analysis_scripts"))
 
 class AnalysisHandler(QObject):
+    """
+    Handles running appropriate analysis script and returning result.
+    """
     module_updated = pyqtSignal(str)
 
     def __init__(self, data_handler):

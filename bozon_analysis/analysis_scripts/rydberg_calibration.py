@@ -1,8 +1,9 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.optimize import curve_fit
-from analysis_scripts.helper_library import fit_funcs
+from bozon_analysis.analysis_scripts.helper_library import fit_funcs
 from mpl_toolkits.axes_grid1 import make_axes_locatable
+from scipy.fft import fft, fftfreq
 
 def main(ds):
     fill = ds['fill'].values
@@ -39,21 +40,31 @@ def main(ds):
         ax.errorbar(xu, yu, yerr = yu_e, fmt = 'o')
         ax.set_xlabel(key[0])
         ax.set_ylabel('Survival')
-        if key[0] == 'spec3p0':
-            T = ds['piquarterstime'].values[0]
-            guess = [xu[np.argmax(yu)], 1, 2*np.pi/(8*T), 4*T, 0]
+        if key[0] == 'ryd_freq' or key[0] == 'ryd_det':
+            T = ds['uvtime'].values[0]
+            guess = [xu[np.argmax(yu)], -1, 2*np.pi/(2*T), T, 1]
             popt, _ = curve_fit(fit_funcs.rabi_resonance, xu, yu, p0 = guess)
             xp = np.linspace(np.min(xu), np.max(xu), 100)
             ax.plot(xp, fit_funcs.rabi_resonance(xp, *popt), 'r-')
             ax.axvline(popt[0], color = 'k', ls = '--')
             result[key[0]] = popt[0]
-        if key[0] == 'piquarterstime':
-            guess = [xu[np.argmax(yu)], -(np.pi/(4*xu[np.argmax(yu)]))**2, 1]
-            popt, _ = curve_fit(fit_funcs.parabola, xu, yu, p0 = guess)
+        if key[0] == 'uvtime':
+            xf = fftfreq(len(yu), xu[1]-xu[0])[:len(yu)//2]
+            yf = np.abs(fft(yu-np.mean(yu)))[:len(yu)//2]
+            xmax = xf[np.argmax(yf)]
+            guess = [0, xmax, 1, 0]
+            popt, _ = curve_fit(fit_funcs.cosine, xu, yu, p0 = guess)
             xp = np.linspace(np.min(xu), np.max(xu), 100)
-            ax.plot(xp, fit_funcs.parabola(xp, *popt), 'r-')
+            ax.plot(xp, fit_funcs.cosine(xp, *popt), 'r-')
+            ax.axvline(1/(2*popt[1]), color = 'k', ls = '--')
+            result[key[0]] = 1/(2*popt[1])
+        if key[0] == 'time407':
+            guess = [(yu[0]-yu[1])/yu[0], yu[0], 0]
+            popt, _ = curve_fit(fit_funcs.exponential, xu, yu, p0 = guess)
+            xp = np.linspace(np.min(xu), np.max(xu), 100)
+            ax.plot(xp, fit_funcs.exponential(xp, *popt), 'r-')
             ax.axvline(popt[0], color = 'k', ls = '--')
-            result[key[0]] = popt[0]
+            result[key[0]] = popt[0]*5
     else:
         pass
 
