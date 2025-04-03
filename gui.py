@@ -101,8 +101,8 @@ class MainWindow(QMainWindow):
         ## image processor buttons
         self.enable_disable_crop_button = QPushButton("Disable crop", self)
         self.enable_disable_crop_button.clicked.connect(self.enable_disable_crop_button_press)
-        self.enable_disable_convolution_button = QPushButton("Enable convolution", self)
-        self.enable_disable_convolution_button.clicked.connect(self.enable_disable_convolution_button_press)
+        self.enable_disable_deconvolution_button = QPushButton("Enable deconvolution", self)
+        self.enable_disable_deconvolution_button.clicked.connect(self.enable_disable_deconvolution_button_press)
         self.enable_all_sites_button = QPushButton("Enable all sites", self)
         self.enable_all_sites_button.clicked.connect(self.enable_all_sites_button_press)
         self.set_crop_button = QPushButton("Set crop", self)
@@ -122,7 +122,7 @@ class MainWindow(QMainWindow):
 
         self.image_processor_button_layout = QHBoxLayout()
         self.image_processor_button_layout.addWidget(self.enable_disable_crop_button)
-        self.image_processor_button_layout.addWidget(self.enable_disable_convolution_button)
+        self.image_processor_button_layout.addWidget(self.enable_disable_deconvolution_button)
         self.image_processor_button_layout.addWidget(self.enable_all_sites_button)
         self.image_processor_button_layout.addWidget(self.set_crop_button)
         self.image_processor_button_layout.addWidget(self.set_offset_button)
@@ -210,12 +210,12 @@ class MainWindow(QMainWindow):
         else:
             self.enable_disable_crop_button.setText("Enable crop")
 
-    def enable_disable_convolution_button_press(self):
-        self.image_processor.convolution_enabled = not self.image_processor.convolution_enabled
-        if self.image_processor.convolution_enabled:
-            self.enable_disable_convolution_button.setText("Disable convolution")
+    def enable_disable_deconvolution_button_press(self):
+        self.image_processor.deconvolution_enabled = not self.image_processor.deconvolution_enabled
+        if self.image_processor.deconvolution_enabled:
+            self.enable_disable_deconvolution_button.setText("Disable dedeconvolution")
         else:
-            self.enable_disable_convolution_button.setText("Enable convolution")
+            self.enable_disable_deconvolution_button.setText("Enable dedeconvolution")
 
     def enable_all_sites_button_press(self):
         self.image_processor.all_sites_enabled = not self.image_processor.all_sites_enabled

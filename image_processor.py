@@ -40,6 +40,9 @@ DXIDYL = POINTS[1,0,1] - POINTS[0,0,1]
 DYIDXL = POINTS[0,1,0] - POINTS[0,0,0]
 ALL_POINTS = POINTS.reshape(48*48,2)
 LOAD_POINTS = POINTS[::2,::3].reshape(24*16,2)
+FULL_SIZE = 85
+xl, yl = np.meshgrid(np.arange(-(FULL_SIZE-48)//2,48+(FULL_SIZE-48)//2)-1, np.arange(-(FULL_SIZE-48)//2,48+(FULL_SIZE-48)//2)-2)
+ALL_POINTS_EXTENDED = np.stack((xl*DYIDXL + yl*DYIDYL + POINTS[0,0,0],xl*DXIDXL + yl*DXIDYL + POINTS[0,0,1])).reshape((2,FULL_SIZE**2)).T
 
 SIGMA = 1.4
 KERNEL_SIZE = 9
@@ -61,7 +64,7 @@ class ImageProcessor:
         # self.kernel = np.arange(-(self.kernel_size//2), self.kernel_size//2+1)
 
         self._crop_enabled = True
-        self._convolution_enabled = False
+        self._deconvolution_enabled = False
         self._all_sites_enabled = False
 
         self.roi = [50, 50+CROP_SIZE[0], 36, 36+CROP_SIZE[1]]
@@ -91,12 +94,12 @@ class ImageProcessor:
             self.offset_switch, self.offset = self.offset, self.offset_switch
 
     @property
-    def convolution_enabled(self):
-        return self._convolution_enabled
+    def deconvolution_enabled(self):
+        return self._deconvolution_enabled
     
-    @convolution_enabled.setter
-    def convolution_enabled(self, new_state):
-        self._convolution_enabled = new_state
+    @deconvolution_enabled.setter
+    def deconvolution_enabled(self, new_state):
+        self._deconvolution_enabled = new_state
 
     @property
     def all_sites_enabled(self):
@@ -292,7 +295,10 @@ class ImageProcessor:
             else:
                 target_points = LOAD_POINTS
         else:
-            target_points = ALL_POINTS
+            if not self.crop_enabled:
+                target_points = ALL_POINTS
+            else:
+                target_points = ALL_POINTS_EXTENDED
 
         ## Fit array offsets from first image and then get site counts for each image
         fitted_shifts = np.zeros((images.shape[0], 2))
@@ -305,7 +311,7 @@ class ImageProcessor:
                 self.offset = ((LOW_PASS-1)*self.offset + res.x)/LOW_PASS + np.array([yjumps[i-1]*DYIDYL, xjumps[i-1]*DXIDXL])
             fitted_shifts[i] = res.x
 
-            if self.convolution_enabled:
+            if self.deconvolution_enabled:
                 im_inds, cen_inds, cm_data = ImageProcessor.get_convolution_matrix(target_points + fitted_shifts[i], self.crop_enabled)
                 cmat = sparse.coo_matrix((cm_data,(im_inds, cen_inds)), 
                                          shape = (CROP_PIXELS*self.crop_enabled + TOTAL_PIXELS*(1-self.crop_enabled), 
@@ -314,7 +320,7 @@ class ImageProcessor:
                 if j==0:
                     counts[j,i,:len(LOAD_POINTS)] = ImageProcessor.get_counts(images[i,j], LOAD_POINTS + fitted_shifts[i])
                 else:
-                    if self.convolution_enabled:
+                    if self.deconvolution_enabled:
                         counts[j,i,:len(target_points)] = lsqr(cmat, images[i,j].flatten(), atol = 1e-2, btol = 1e-2, iter_lim = 10)[0] 
                     else:
                         counts[j,i,:len(target_points)] = ImageProcessor.get_counts(images[i,j], target_points + fitted_shifts[i])

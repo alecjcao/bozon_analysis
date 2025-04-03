@@ -1,0 +1,12 @@
+name: data_app
+channels:
+  - defaults
+  - conda-forge
+dependencies:
+  - numpy
+  - matplotlib
+  - xarray
+  - scipy
+  - h5py
+  - numba
+  - scikit-image
