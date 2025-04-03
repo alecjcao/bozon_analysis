@@ -41,7 +41,7 @@ DYIDXL = POINTS[0,1,0] - POINTS[0,0,0]
 ALL_POINTS = POINTS.reshape(48*48,2)
 LOAD_POINTS = POINTS[::2,::3].reshape(24*16,2)
 FULL_SIZE = 85
-xl, yl = np.meshgrid(np.arange(-(FULL_SIZE-48)//2,48+(FULL_SIZE-48)//2)-1, np.arange(-(FULL_SIZE-48)//2,48+(FULL_SIZE-48)//2)-2)
+xl, yl = np.meshgrid(np.arange(-(FULL_SIZE-48)//2,48+(FULL_SIZE-48)//2)+2, np.arange(-(FULL_SIZE-48)//2,48+(FULL_SIZE-48)//2)-2)
 ALL_POINTS_EXTENDED = np.stack((xl*DYIDXL + yl*DYIDYL + POINTS[0,0,0],xl*DXIDXL + yl*DXIDYL + POINTS[0,0,1])).reshape((2,FULL_SIZE**2)).T
 
 SIGMA = 1.4
@@ -295,7 +295,7 @@ class ImageProcessor:
             else:
                 target_points = LOAD_POINTS
         else:
-            if not self.crop_enabled:
+            if self.crop_enabled:
                 target_points = ALL_POINTS
             else:
                 target_points = ALL_POINTS_EXTENDED

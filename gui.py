@@ -213,9 +213,9 @@ class MainWindow(QMainWindow):
     def enable_disable_deconvolution_button_press(self):
         self.image_processor.deconvolution_enabled = not self.image_processor.deconvolution_enabled
         if self.image_processor.deconvolution_enabled:
-            self.enable_disable_deconvolution_button.setText("Disable dedeconvolution")
+            self.enable_disable_deconvolution_button.setText("Disable deconvolution")
         else:
-            self.enable_disable_deconvolution_button.setText("Enable dedeconvolution")
+            self.enable_disable_deconvolution_button.setText("Enable deconvolution")
 
     def enable_all_sites_button_press(self):
         self.image_processor.all_sites_enabled = not self.image_processor.all_sites_enabled
