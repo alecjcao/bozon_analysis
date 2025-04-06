@@ -1,4 +1,5 @@
 import numpy as np
+np.seterr(divide='ignore', invalid='ignore')
 from numba import njit
 
 from scipy.sparse.linalg import lsqr
@@ -315,8 +316,10 @@ class ImageProcessor:
             ax[1,0].axvline(thresholds[i], color = h[-1][-1].get_facecolor())
         ax[1,0].set_yscale('log')
         ax[1,0].set_xlim(-20, 100)
-        ax[1,1].plot(np.mean(detections[0], axis = -1), label = 'fill')
-        ax[1,1].plot(np.nansum(detections[-1], axis = -1)/np.nansum(detections[-2], axis = -1), label = 'survival')
+        ax[1,1].plot(np.mean(detections[0, :16*24], axis = -1), label = 'fill')
+        survival_mean = np.nansum(detections[-1, :len(target_points)], axis = -1)/np.nansum(detections[-2, :len(target_points)], axis = -1)
+        survival_mean[np.isnan(survival_mean)] = 0
+        ax[1,1].plot(survival_mean, label = 'survival')
         ax[1,1].legend()
         ax[1,1].set_ylim(-.05, 1.05)
         self.figure.tight_layout()

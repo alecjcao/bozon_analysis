@@ -8,11 +8,11 @@ from PyQt5.QtCore import QObject, pyqtSignal
 
 import platform
 if platform.node() == 'GLaDOS':
-    HOST = '127.0.0.1'
+    HOST = 'localhost'
 elif platform.node() == 'burrito':
-    HOST = ''
+    HOST = '192.168.59.41' #local lab intranet
 else:
-    HOST = '127.0.0.1'
+    HOST = 'localhost'
 PORT = 12345
 CLIENT_NAME = 'analysis'
 

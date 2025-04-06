@@ -110,7 +110,7 @@ class DataHandler(QObject):
         Find and return the most recent file number in the current date's Raw Data folder.
         """
         data_folder = os.path.join(ROOT_DIR, self.date.strftime(DATE_STR_FORMAT), RAW_DATA_FOLDER)
-        most_recent_file = sorted(glob.glob(data_folder+'\\data_*.h5'), key=os.path.getmtime)[-1]
+        most_recent_file = sorted(glob.glob(os.path.join(data_folder,'data_*.h5')), key=os.path.getmtime)[-1]
         return int(re.search('data_(.*).h5', most_recent_file).group(1))
     
     def load_raw_data(self):

@@ -15,6 +15,8 @@ from bozon_analysis.gui_logger import QTextEditLogger
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 
+import threading
+
 class MainWindow(QMainWindow):
     """Main user interface."""
 
@@ -33,6 +35,7 @@ class MainWindow(QMainWindow):
 
         self.init_ui()
 
+        self.analysis_thread = None
         self.socket_handler.start()
 
     def init_ui(self):
@@ -238,18 +241,28 @@ class MainWindow(QMainWindow):
             self.image_processor.select_offset(self)
         except Exception as e:
             logging.error(f"Error selecting offset: {e}")
-    
+
     def process_image_button_press(self):
+        if self.analysis_thread:
+            self.analysis_thread.join()
+        self.analysis_thread = threading.Thread(target = self.process_image, daemon=True)
+        self.analysis_thread.start()
+    
+    def process_image(self):
         try:
             self.image_processor.process_images()
         except FileNotFoundError as e:
             logging.error(e)
         except Exception as e:
             logging.error(f"Error running analysis: {e}")
-
-    
     
     def run_analysis_button_press(self):
+        if self.analysis_thread:
+            self.analysis_thread.join()
+        self.analysis_thread = threading.Thread(target = self.run_analysis, daemon=True)
+        self.analysis_thread.start()
+
+    def run_analysis(self):
         """Run the analysis and update the GUI with results and plots."""
         try:
             self.image_processor.process_images()
@@ -258,5 +271,4 @@ class MainWindow(QMainWindow):
             logging.error(e)
         except Exception as e:
             logging.error(f"Error running analysis: {e}")
-
     
