@@ -18,6 +18,8 @@ from bozon_analysis.utils.chimera_parser import get_target_array, check_rearrang
 
 from skimage.filters import threshold_minimum
 
+import matplotlib.pyplot as plt
+
 IMAGE_SIZE = (301, 301)
 TOTAL_PIXELS = np.prod(IMAGE_SIZE)
 CROP_SIZE = (210, 200)
@@ -61,7 +63,7 @@ class ImageProcessor:
     """
     Processes images from raw data and formats into processed xarray dataset
     """
-    def __init__(self, data_handler, figure):
+    def __init__(self, data_handler):
 
         self._crop_enabled = True
         self._deconvolution_enabled = False
@@ -75,7 +77,7 @@ class ImageProcessor:
         self._default_threshold = 10
 
         self.data_handler = data_handler
-        self.figure = figure
+        # self.figure = figure
 
         ImageProcessor.get_masks(LOAD_POINTS, IMAGE_SIZE)
         ImageProcessor.get_counts(np.zeros(IMAGE_SIZE), LOAD_POINTS)
@@ -303,30 +305,31 @@ class ImageProcessor:
             detections[j], thresholds[j] = self.threshold_counts(counts[j])
 
         ## plot image processing results
-        self.figure.clf()
-        self.figure.suptitle(self.data_handler.date.strftime('%y%m%d') + ' File' + str(self.data_handler.file))
-        ax = self.figure.subplots(2,2)
+        # self.figure.clf()
+        # self.figure.suptitle(self.data_handler.date.strftime('%y%m%d') + ' File' + str(self.data_handler.file))
+        fig, ax = plt.subplots(2,2, figsize = (6,6))
+        fig.suptitle(self.data_handler.date.strftime('%y%m%d') + ' File' + str(self.data_handler.file))
         ax[0,0].imshow(np.mean(images, axis = (0,1)))
         ax[0,0].plot(target_points[:,1]+np.mean(fitted_shifts[:,1]), target_points[:,0]+np.mean(fitted_shifts[:,0]), 'r.', ms = 1)
         ax[0,1].plot(fitted_shifts[:,1], label = 'x')
         ax[0,1].plot(fitted_shifts[:,0], label = 'y')
         ax[0,1].legend()
         for i in range(pics_per_rep):
-            h = ax[1,0].hist(counts[i].flatten(), bins = range(-20, 100), alpha = 0.5)
+            h = ax[1,0].hist(counts[i].flatten(), bins = range(-20, 200), alpha = 0.5)
             ax[1,0].axvline(thresholds[i], color = h[-1][-1].get_facecolor())
         ax[1,0].set_yscale('log')
-        ax[1,0].set_xlim(-20, 100)
+        ax[1,0].set_xlim(-20, 200)
         ax[1,1].plot(np.mean(detections[0, :16*24], axis = -1), label = 'fill')
         survival_mean = np.nansum(detections[-1, :len(target_points)], axis = -1)/np.nansum(detections[-2, :len(target_points)], axis = -1)
         survival_mean[np.isnan(survival_mean)] = 0
         ax[1,1].plot(survival_mean, label = 'survival')
         ax[1,1].legend()
         ax[1,1].set_ylim(-.05, 1.05)
-        self.figure.tight_layout()
+        fig.tight_layout()
 
         ds = self.export_to_xarray(data, detections, fitted_shifts, target_points)
         self.data_handler.save_processed_dataset(ds)
-        self.data_handler.save_image_processing_fig(self.figure)
+        self.data_handler.save_image_processing_fig(fig)
         
     #### 
     

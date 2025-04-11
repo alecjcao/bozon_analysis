@@ -3,6 +3,7 @@ from PyQt5.QtWidgets import (
     QInputDialog, QSplitter, QHBoxLayout, QLabel, QFileDialog
 )
 from PyQt5.QtCore import Qt
+from PyQt5.QtGui import QPixmap
 
 import logging
 
@@ -24,12 +25,12 @@ class MainWindow(QMainWindow):
         ## initialize window
         super().__init__()
         self.setWindowTitle("Data Analyzer")
-        self.setGeometry(100, 100, 800, 800)
+        self.setGeometry(100, 100, 900, 700)
 
-        self.image_process_figure = Figure(figsize = (6,6))
+        # self.image_process_figure = Figure(figsize = (6,6))
 
         self.data_handler = DataHandler()
-        self.image_processor = ImageProcessor(self.data_handler, self.image_process_figure)
+        self.image_processor = ImageProcessor(self.data_handler)
         self.analysis_handler = AnalysisHandler(self.data_handler)
         self.socket_handler = SocketHandler(self.data_handler, self.image_processor, self.analysis_handler)
 
@@ -48,8 +49,11 @@ class MainWindow(QMainWindow):
         logging.getLogger().addHandler(self.log_handler)
 
         ## figure display
-        self.image_process_canvas = FigureCanvas(self.image_process_figure)
-        self.image_process_canvas.show()
+        # self.image_process_canvas = FigureCanvas(self.image_process_figure)
+        # self.image_process_canvas.show()
+        self.image_process_canvas = QLabel('')
+        self.data_handler.figure_saved.connect(self.update_image_process_figure)
+        self.data_handler.emit_most_recent_image_fig()
 
         ## data handler buttons
         self.set_date_button = QPushButton("Set date", self)
@@ -271,4 +275,9 @@ class MainWindow(QMainWindow):
             logging.error(e)
         except Exception as e:
             logging.error(f"Error running analysis: {e}")
+
+    def update_image_process_figure(self, fig_path):
+        pixmap = QPixmap(fig_path)
+        self.image_process_canvas.setPixmap(pixmap)
+
     

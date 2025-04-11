@@ -34,6 +34,7 @@ class DataHandler(QObject):
     """
     date_updated = pyqtSignal(datetime.datetime)
     file_updated = pyqtSignal(int)
+    figure_saved = pyqtSignal(str)
 
     def __init__(self):
         super().__init__()
@@ -142,9 +143,10 @@ class DataHandler(QObject):
 
     def save_image_processing_fig(self, fig):
         fig_path = os.path.join(ROOT_DIR, SAVE_FOLDER, self.date.strftime('%Y'), self.date.strftime('%y%m'),
-            self.date.strftime(DATE_STR_FORMAT), "image_processing_summary", f'summary_{self.file}.pdf')
+            self.date.strftime(DATE_STR_FORMAT), "image_processing_summary", f'summary_{self.file}.png')
         os.makedirs(os.path.dirname(fig_path), exist_ok=True)
         fig.savefig(fig_path)
+        self.figure_saved.emit(fig_path)
 
     def load_processed_data(self):
         processed_data_path = os.path.join(ROOT_DIR, SAVE_FOLDER, self.date.strftime('%Y'), self.date.strftime('%y%m'),
@@ -166,3 +168,10 @@ class DataHandler(QObject):
             self.date.strftime(DATE_STR_FORMAT), "analysis_summary", f'summary_{self.file}.pdf')
         os.makedirs(os.path.dirname(fig_path), exist_ok=True)
         fig.savefig(fig_path)
+
+    def emit_most_recent_image_fig(self):
+        path = os.path.join(ROOT_DIR,SAVE_FOLDER)
+        for i in ['yyyy', 'yymm', 'yymmdd']:
+            path = os.path.join(path, max(os.listdir(path)))
+        path = os.path.join(path, 'image_processing_summary')
+        self.figure_saved.emit(os.path.join(path, max(os.listdir(path))))
