@@ -3,6 +3,7 @@ import importlib.util
 import sys
 from pathlib import Path
 from PyQt5.QtCore import QObject, pyqtSignal
+import logging
 
 SCRIPTS_DIR = Path(os.path.join(os.path.dirname(__file__), "analysis_scripts"))
 
@@ -27,21 +28,19 @@ class AnalysisHandler(QObject):
     
     @module_name.setter
     def module_name(self, new_module):
-        new_module = Path(new_module).stem
-        if new_module == self.module_name:
-            return
         if new_module is None:
             self._module_name = None
             self.module = None
             self.module_updated.emit('')
             return
+        new_module = Path(new_module).stem
         if new_module in self.all_modules.keys():
             self._module_name = new_module
             self.module = self.all_modules[new_module]
             self.module_updated.emit(self.module_name)
             return
         else:
-            raise ValueError(f'{new_module} not found in analysis_scripts folder.')
+            logging.error(f'{new_module} not found in analysis_scripts folder.')
 
     def __load_all_modules(self):
         self.all_modules = {}
@@ -58,8 +57,12 @@ class AnalysisHandler(QObject):
         result = {}
         if self.module is not None:
             data = self.data_handler.get_processed_data()
-            result, figure = self.module.main(data)
-            self.data_handler.save_analysis_fig(figure)
+            try:
+                result, figure = self.module.main(data)
+                self.data_handler.save_analysis_fig(figure)
+            except TypeError:
+                logging.error(f"Analysis script {self.module_name} returned an unexpected number of results.")
+                result = {}
             if result is None:
                 result = {}
         return result

@@ -159,10 +159,7 @@ class MainWindow(QMainWindow):
         """Prompt the user for a date."""
         text, ok = QInputDialog.getText(self, "Input Dialog", "Enter date:")
         if ok and text:  # If user presses OK and entered text
-            try:
-                self.data_handler.date = text
-            except Exception as e:
-                logging.error(f"Error setting date: {e}")
+            self.data_handler.date = text
 
     def update_date_label(self):
         self.date_label.setText(self.data_handler.date.strftime('%y%m%d'))
@@ -171,10 +168,7 @@ class MainWindow(QMainWindow):
         """Prompt the user for a file number."""
         text, ok = QInputDialog.getText(self, "Input Dialog", "Enter file number:")
         if ok and text:  # If user presses OK and entered text
-            try:
-                self.data_handler.file = text
-            except Exception as e:
-                logging.error(f"Error setting file number: {e}")
+            self.data_handler.file = text
 
     def update_file_label(self):
         self.file_label.setText(str(self.data_handler.file))
@@ -238,13 +232,13 @@ class MainWindow(QMainWindow):
         try:
             self.image_processor.select_crop_region(self)
         except Exception as e:
-            logging.error(f"Error selecting crop region: {e}")
+            logging.error(f"Unexpected error selecting crop region: {e}")
     
     def set_offset_button_press(self):
         try:
             self.image_processor.select_offset(self)
         except Exception as e:
-            logging.error(f"Error selecting offset: {e}")
+            logging.error(f"Unexpected error selecting offset: {e}")
 
     def process_image_button_press(self):
         if self.analysis_thread:
@@ -255,10 +249,8 @@ class MainWindow(QMainWindow):
     def process_image(self):
         try:
             self.image_processor.process_images()
-        except FileNotFoundError as e:
-            logging.error(e)
         except Exception as e:
-            logging.error(f"Error running analysis: {e}")
+            logging.error(f"Unexpected error running analysis: {e}")
     
     def run_analysis_button_press(self):
         if self.analysis_thread:
@@ -271,10 +263,8 @@ class MainWindow(QMainWindow):
         try:
             self.image_processor.process_images()
             self.analysis_handler.run_analysis_script()
-        except FileNotFoundError as e:
-            logging.error(e)
         except Exception as e:
-            logging.error(f"Error running analysis: {e}")
+            logging.error(f"Unexpected error running analysis: {e}")
 
     def update_image_process_figure(self, fig_path):
         pixmap = QPixmap(fig_path)

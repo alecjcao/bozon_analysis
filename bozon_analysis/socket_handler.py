@@ -16,6 +16,10 @@ else:
 PORT = 12345
 CLIENT_NAME = 'analysis'
 
+HEARTBEAT_INTERVAL = 1
+HEARTBEAT_TIMEOUT = 5
+RECONNECT_INTERVAL = 1
+
 class SocketHandler(QObject):
     """
     Handles communication with bozon_manager server for automatically executing data analysis.
@@ -32,8 +36,10 @@ class SocketHandler(QObject):
         self.running = False
         self.connected = False
         self.socket = None
-        self.thread = None
-        self.reconnect_interval = 1
+        self.client_thread = threading.Thread(target=self.connect_and_listen, daemon=True)
+        self.client_thread.start()
+        self.heartbeat_thread = threading.Thread(target=self.heartbeat, daemon=True)
+        self.heartbeat_thread.start()
 
     def send_msg(self, msg):
         # Prefix each message with a 4-byte length (network byte order)
@@ -63,72 +69,78 @@ class SocketHandler(QObject):
         """Starts the socket connection and listening thread."""
         if not self.running:
             self.running = True
-            self.socket_status.emit()
-            self.thread = threading.Thread(target=self.connect_and_listen, daemon=True)
-            self.thread.start()
 
     def stop(self):
         """Stops the socket handler and closes the connection."""
         self.running = False
-        if self.thread and self.thread.is_alive():
-            self.thread.join()
-        if self.socket:
-            self.socket.close()
-            self.socket = None
-        self.socket_status.emit()
 
     def connect_and_listen(self):
         """Handles connection, reconnection, and message listening."""
-        while self.running:
-            self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            self.socket.settimeout(1)
+        while True:
             try:
+                if not self.running:
+                    raise ConnectionError
+                self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                self.socket.settimeout(HEARTBEAT_TIMEOUT)
                 self.socket.connect((HOST, PORT))
-                self.send_msg(CLIENT_NAME.encode('utf-8'))
+                self.send_msg(format_message('id'))
 
                 self.connected = True
                 self.socket_status.emit()
+                logging.info("Connected to server.")
                 while self.running:
-                    try:
-                        data = self.recv_msg()
-                    except socket.timeout:
-                        continue
+                    data = self.recv_msg()
                     if not data:
-                        raise ConnectionResetError("Server closed the connection.")
-                    msg_in = data.decode('utf-8')
-                    msg_out = self.respond(msg_in)
-                    self.send_msg(msg_out.encode('utf-8'))
+                        raise ConnectionError
+                    msg = json.loads(data.decode('utf-8'))
+                    if not msg['type'] == 'heartbeat':
+                        logging.info(f'Received ' + msg['type'] + ' from server.')
+                        threading.Thread(target=self.respond, args = (msg,), daemon=True).start()
 
-            except (ConnectionRefusedError, ConnectionResetError, socket.error) as e:
-                self.connected = False
-                self.socket_status.emit()
-                time.sleep(self.reconnect_interval)  # Wait before retrying
-        self.running = False
-        self.connected = False
-        self.socket.close()
-        self.socket = None
+            except (ConnectionError, socket.error) as e:
+                if self.connected:
+                    if self.running:
+                        logging.warning("Server disconnected.")
+                    else:
+                        logging.info("Disconnected from server.")
+                    self.connected = False
+                    self.socket_status.emit()
+                    self.socket.close()
+                time.sleep(RECONNECT_INTERVAL)  # Wait before retrying
+
+    def heartbeat(self):
+        while True:
+            try:
+                if self.connected and self.running:
+                    self.send_msg(format_message('heartbeat'))
+                time.sleep(HEARTBEAT_INTERVAL)
+            except (ConnectionError, socket.error):
+                pass
+
     
     def respond(self, msg_in):
         result = {}
-        self.data_handler.date = self.data_handler.get_most_recent_date()
-        self.data_handler.file =self.data_handler.get_most_recent_file()
-        try:
-            self.image_processor.process_images()
-        except Exception as e:
-            logging.error(f"Error in processing images: {e}")
-            return json.dumps(result)
-        try:
-            msg_in = json.loads(msg_in)
-            self.analysis_handler.module_name = msg_in['analysis_script']
-        except ValueError:
-            logging.error("Invalid non-JSON message received.")
-            return json.dumps(result)
-        except KeyError:
-            logging.error("Did not find analysis script in received message.")
-            return json.dumps(result)
-        try:
-            result = self.analysis_handler.run_analysis_script()
-        except Exception as e:
-            logging.error(f"Error in analysis script: {e}")
-        return json.dumps(result)
+        processed_images = True
+        if msg_in['type'] == 'analyze data':
+            self.data_handler.date = self.data_handler.get_most_recent_date()
+            self.data_handler.file = self.data_handler.get_most_recent_file()
+            try:
+                self.image_processor.process_images()
+            except Exception as e:
+                logging.error(f"Unexpected error in processing images: {e}")
+                processed_images = False
+            if processed_images and msg_in['data']:
+                try:
+                    self.analysis_handler.module_name = msg_in['data']['analysis_script']
+                    result = self.analysis_handler.run_analysis_script()
+                except KeyError:
+                    logging.error("Did not find analysis script in received message.")
+                except Exception as e:
+                    logging.error(f"Unexpected error in analysis script: {e}")
+        if self.connected:
+            logging.info(f"Sending result {json.dumps(result)} to server.")
+            self.send_msg(format_message('update', result))
 
+@staticmethod
+def format_message(type, data = None):
+    return json.dumps({'from' : CLIENT_NAME, 'type' : type, 'data' : data}).encode('utf-8')

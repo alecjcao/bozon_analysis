@@ -5,7 +5,7 @@ import logging
 
 if __name__ == "__main__":
     logging.basicConfig(
-        level=logging.WARNING,
+        level=logging.INFO,
         format="%(asctime)s - %(levelname)s - %(message)s",
         handlers=[
             logging.StreamHandler()  # Logs to console

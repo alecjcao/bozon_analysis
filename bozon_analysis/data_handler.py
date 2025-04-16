@@ -6,6 +6,7 @@ from dateutil.parser import parse
 import h5py
 import xarray as xr
 import numpy as np
+import logging
 
 from PyQt5.QtCore import QObject, pyqtSignal
 
@@ -63,10 +64,12 @@ class DataHandler(QObject):
         elif isinstance(new_date, str):
             try:
                 self._date = datetime.datetime.strptime(new_date, DATE_STR_FORMAT)
-            except ValueError as e:
-                raise ValueError("Invalid date string. Please use 'YYMMDD'.")
+            except ValueError:
+                logging.error("Invalid date string. Please use 'YYMMDD'.")
+                return
         else:
-            raise ValueError("Invalid date type. Please use a valid string or datetime.date object.")
+            logging.error("Invalid date type. Please use a valid string or datetime.date object.")
+            return
         self.date_updated.emit()
         self.raw_data_loaded = False
         self.processed_data_loaded = False
@@ -83,7 +86,8 @@ class DataHandler(QObject):
         try:
             self._file = int(new_file)
         except ValueError:
-            raise ValueError("Invalid file number. Please use a valid integer.")
+            logging.error("Invalid file number. Please use a valid integer.")
+            return
         self.file_updated.emit()
         self.raw_data_loaded = False
         self.processed_data_loaded = False

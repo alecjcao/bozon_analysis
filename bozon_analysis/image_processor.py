@@ -305,9 +305,6 @@ class ImageProcessor:
             detections[j], thresholds[j] = self.threshold_counts(counts[j])
 
         ## plot image processing results
-        # self.figure.clf()
-        # self.figure.suptitle(self.data_handler.date.strftime('%y%m%d') + ' File' + str(self.data_handler.file))
-        # fig, ax = plt.subplots(2,2, figsize = (6,6))
         self.figure.suptitle(self.data_handler.date.strftime('%y%m%d') + ' File' + str(self.data_handler.file))
         self.ax[0,0].cla()
         self.ax[0,0].imshow(np.mean(images, axis = (0,1)))
