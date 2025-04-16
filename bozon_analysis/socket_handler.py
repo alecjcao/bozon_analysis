@@ -110,8 +110,8 @@ class SocketHandler(QObject):
     
     def respond(self, msg_in):
         result = {}
-        self.data_handler.get_most_recent_date()
-        self.data_handler.get_most_recent_file()
+        self.data_handler.date = self.data_handler.get_most_recent_date()
+        self.data_handler.file =self.data_handler.get_most_recent_file()
         try:
             self.image_processor.process_images()
         except Exception as e:

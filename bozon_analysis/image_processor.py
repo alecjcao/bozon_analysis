@@ -77,7 +77,7 @@ class ImageProcessor:
         self._default_threshold = 10
 
         self.data_handler = data_handler
-        # self.figure = figure
+        self.figure, self.ax = plt.subplots(2,2, figsize = (6,6))
 
         ImageProcessor.get_masks(LOAD_POINTS, IMAGE_SIZE)
         ImageProcessor.get_counts(np.zeros(IMAGE_SIZE), LOAD_POINTS)
@@ -307,29 +307,33 @@ class ImageProcessor:
         ## plot image processing results
         # self.figure.clf()
         # self.figure.suptitle(self.data_handler.date.strftime('%y%m%d') + ' File' + str(self.data_handler.file))
-        fig, ax = plt.subplots(2,2, figsize = (6,6))
-        fig.suptitle(self.data_handler.date.strftime('%y%m%d') + ' File' + str(self.data_handler.file))
-        ax[0,0].imshow(np.mean(images, axis = (0,1)))
-        ax[0,0].plot(target_points[:,1]+np.mean(fitted_shifts[:,1]), target_points[:,0]+np.mean(fitted_shifts[:,0]), 'r.', ms = 1)
-        ax[0,1].plot(fitted_shifts[:,1], label = 'x')
-        ax[0,1].plot(fitted_shifts[:,0], label = 'y')
-        ax[0,1].legend()
+        # fig, ax = plt.subplots(2,2, figsize = (6,6))
+        self.figure.suptitle(self.data_handler.date.strftime('%y%m%d') + ' File' + str(self.data_handler.file))
+        self.ax[0,0].cla()
+        self.ax[0,0].imshow(np.mean(images, axis = (0,1)))
+        self.ax[0,0].plot(target_points[:,1]+np.mean(fitted_shifts[:,1]), target_points[:,0]+np.mean(fitted_shifts[:,0]), 'r.', ms = 1)
+        self.ax[0,1].cla()
+        self.ax[0,1].plot(fitted_shifts[:,1], label = 'x')
+        self.ax[0,1].plot(fitted_shifts[:,0], label = 'y')
+        self.ax[0,1].legend()
+        self.ax[1,0].cla()
         for i in range(pics_per_rep):
-            h = ax[1,0].hist(counts[i].flatten(), bins = range(-20, 200), alpha = 0.5)
-            ax[1,0].axvline(thresholds[i], color = h[-1][-1].get_facecolor())
-        ax[1,0].set_yscale('log')
-        ax[1,0].set_xlim(-20, 200)
-        ax[1,1].plot(np.mean(detections[0, :16*24], axis = -1), label = 'fill')
+            h = self.ax[1,0].hist(counts[i].flatten(), bins = range(-20, 200), alpha = 0.5)
+            self.ax[1,0].axvline(thresholds[i], color = h[-1][-1].get_facecolor())
+        self.ax[1,0].set_yscale('log')
+        self.ax[1,0].set_xlim(-20, 200)
+        self.ax[1,1].cla()
+        self.ax[1,1].plot(np.mean(detections[0, :16*24], axis = -1), label = 'fill')
         survival_mean = np.nansum(detections[-1, :len(target_points)], axis = -1)/np.nansum(detections[-2, :len(target_points)], axis = -1)
         survival_mean[np.isnan(survival_mean)] = 0
-        ax[1,1].plot(survival_mean, label = 'survival')
-        ax[1,1].legend()
-        ax[1,1].set_ylim(-.05, 1.05)
-        fig.tight_layout()
+        self.ax[1,1].plot(survival_mean, label = 'survival')
+        self.ax[1,1].legend()
+        self.ax[1,1].set_ylim(-.05, 1.05)
+        self.figure.tight_layout()
 
         ds = self.export_to_xarray(data, detections, fitted_shifts, target_points)
         self.data_handler.save_processed_dataset(ds)
-        self.data_handler.save_image_processing_fig(fig)
+        self.data_handler.save_image_processing_fig(self.figure)
         
     #### 
     

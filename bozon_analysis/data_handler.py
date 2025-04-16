@@ -32,8 +32,8 @@ class DataHandler(QObject):
     """
     Handles loading and saving of data and figures.
     """
-    date_updated = pyqtSignal(datetime.datetime)
-    file_updated = pyqtSignal(int)
+    date_updated = pyqtSignal()
+    file_updated = pyqtSignal()
     figure_saved = pyqtSignal(str)
 
     def __init__(self):
@@ -67,7 +67,7 @@ class DataHandler(QObject):
                 raise ValueError("Invalid date string. Please use 'YYMMDD'.")
         else:
             raise ValueError("Invalid date type. Please use a valid string or datetime.date object.")
-        self.date_updated.emit(self.date)
+        self.date_updated.emit()
         self.raw_data_loaded = False
         self.processed_data_loaded = False
 
@@ -84,7 +84,7 @@ class DataHandler(QObject):
             self._file = int(new_file)
         except ValueError:
             raise ValueError("Invalid file number. Please use a valid integer.")
-        self.file_updated.emit(self.file)
+        self.file_updated.emit()
         self.raw_data_loaded = False
         self.processed_data_loaded = False
 
@@ -174,4 +174,5 @@ class DataHandler(QObject):
         for i in ['yyyy', 'yymm', 'yymmdd']:
             path = os.path.join(path, max(os.listdir(path)))
         path = os.path.join(path, 'image_processing_summary')
-        self.figure_saved.emit(os.path.join(path, max(os.listdir(path))))
+        max_file = max([int(re.search('summary_(.*).png', f).group(1)) for f in os.listdir(path)])
+        self.figure_saved.emit(os.path.join(path, f'summary_{max_file}.png'))
