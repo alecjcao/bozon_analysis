@@ -41,16 +41,13 @@ class MainWindow(QMainWindow):
 
     def init_ui(self):
         ## logging display
-        self.log_display = QTextEdit(self)
-        self.log_display.setReadOnly(True)
-        self.log_display.setStyleSheet("background-color: black; color: white;")
-        self.log_handler = QTextEditLogger(self.log_display)
-        self.log_handler.setFormatter(logging.Formatter("%(asctime)s - %(levelname)s - %(message)s"))
-        logging.getLogger().addHandler(self.log_handler)
+        self.log_display = QTextEditLogger(self)
+        self.log_display.setFormatter(logging.Formatter(
+            '%(asctime)s-%(levelname)s, %(module)s->%(funcName)s: %(message)s'))
+        self.log_display.widget.setStyleSheet("background-color: black; color: white;")
+        logging.getLogger().addHandler(self.log_display)
 
         ## figure display
-        # self.image_process_canvas = FigureCanvas(self.image_process_figure)
-        # self.image_process_canvas.show()
         self.image_process_canvas = QLabel('')
         self.data_handler.figure_saved.connect(self.update_image_process_figure)
         self.data_handler.emit_most_recent_image_fig()
@@ -140,7 +137,7 @@ class MainWindow(QMainWindow):
 
         self.splitter = QSplitter(Qt.Horizontal)
         self.splitter.addWidget(self.image_process_canvas)
-        self.splitter.addWidget(self.log_display)
+        self.splitter.addWidget(self.log_display.widget)
         self.splitter.setStretchFactor(0, 1) 
         self.splitter.setStretchFactor(1, 1)
 

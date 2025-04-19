@@ -1,9 +1,12 @@
 from PyQt5.QtWidgets import QTextEdit
-from PyQt5.QtGui import QTextCharFormat, QColor
+from PyQt5.QtGui import QTextCharFormat, QColor, QTextCursor
+from PyQt5.QtCore import QObject, pyqtSignal, pyqtSlot
 import logging
 
-class QTextEditLogger(logging.Handler):
-    """Custom logging handler that writes logs to a QTextEdit widget."""
+MAX_LINES = 1000
+
+class QTextEditLogger(logging.Handler, QObject):
+    appendText = pyqtSignal(str, int)
 
     COLORS = {
         logging.DEBUG: QColor("gray"),
@@ -13,16 +16,31 @@ class QTextEditLogger(logging.Handler):
         logging.CRITICAL: QColor("darkred"),
     }
 
-    def __init__(self, widget):
+    def __init__(self, parent):
         super().__init__()
-        self.widget = widget
-        self.widget.setReadOnly(True)  # Make the log display read-only
+        QObject.__init__(self)
+        self.widget = QTextEdit(parent)
+        self.widget.setReadOnly(True)
+        self.appendText.connect(self.append_message)
 
     def emit(self, record):
-        msg = self.format(record)  # Format the log message
-        color = self.COLORS.get(record.levelno, QColor("black"))
+        msg = self.format(record)
+        level = record.levelno
+        self.appendText.emit(msg, level)
+
+    @pyqtSlot(str, int)
+    def append_message(self, message, level):
+        color = self.COLORS.get(level, QColor("black"))
         text_format = QTextCharFormat()
         text_format.setForeground(color)
-        self.widget.moveCursor(self.widget.textCursor().End)
         self.widget.setCurrentCharFormat(text_format)
-        self.widget.append(msg)  # Append to the QTextEdit widget
+        self.widget.append(message)
+
+        if self.widget.document().blockCount() > MAX_LINES:
+            cursor = self.widget.textCursor()
+            cursor.movePosition(QTextCursor.Start)
+            cursor.select(QTextCursor.BlockUnderCursor)
+            cursor.removeSelectedText()
+            cursor.deleteChar()
+
+        self.widget.moveCursor(self.widget.textCursor().End)
