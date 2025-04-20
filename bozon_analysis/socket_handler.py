@@ -5,6 +5,7 @@ import struct
 import time
 import json
 from PyQt5.QtCore import QObject, pyqtSignal
+import ntpath
 
 import platform
 if platform.node() == 'GLaDOS':
@@ -121,6 +122,7 @@ class SocketHandler(QObject):
     def respond(self, msg_in):
         result = {}
         processed_images = True
+        saved_masks = False
         if msg_in['type'] == 'analyze data':
             self.data_handler.date = self.data_handler.get_most_recent_date()
             self.data_handler.file = self.data_handler.get_most_recent_file()
@@ -137,9 +139,22 @@ class SocketHandler(QObject):
                     logging.error("Did not find analysis script in received message.")
                 except Exception as e:
                     logging.error(f"Unexpected error in analysis script: {e}")
+                try:
+                    if ntpath.basename(msg_in['data']['file']) == "axial_phase.Config":
+                        self.image_processor.save_masks()
+                        saved_masks = True
+                except KeyError:
+                    pass
+                except Exception as e:
+                    logging.error(f"Unexpected error saving masks: {e}")
         if self.connected:
             logging.info(f"Sending result {json.dumps(result)} to server.")
             self.send_msg(format_message('update', result))
+            if saved_masks:
+                logging.info("Successfully saved masks. Alerting server.")
+                self.send_msg(format_message('new masks'))
+        else:
+            logging.warning("Disconnected from server. Couldn't send analysis results.")
 
 @staticmethod
 def format_message(type, data = None):

@@ -26,7 +26,7 @@ else:
     BACKUP_DIR = 'S:\\archive\\strontium_archive_uncompressed\\Raw Data'
 RAW_DATA_FOLDER = 'Raw Data'
 PROCESSED_DATA_FOLDER = 'Processed Data'
-SAVE_FOLDER = 'autoanalysis_results'
+SAVE_FOLDER = 'autoanalysis_results/saved_data'
 DATE_STR_FORMAT = '%y%m%d'
 
 class DataHandler(QObject):
@@ -169,7 +169,7 @@ class DataHandler(QObject):
         fig.suptitle(self.date.strftime(DATE_STR_FORMAT) + f' File {self.file}')
         fig.tight_layout()
         fig_path = os.path.join(ROOT_DIR, SAVE_FOLDER, self.date.strftime('%Y'), self.date.strftime('%y%m'),
-            self.date.strftime(DATE_STR_FORMAT), "analysis_summary", f'summary_{self.file}.pdf')
+            self.date.strftime(DATE_STR_FORMAT), "analysis_summary", f'summary_{self.file}.png')
         os.makedirs(os.path.dirname(fig_path), exist_ok=True)
         fig.savefig(fig_path)
 

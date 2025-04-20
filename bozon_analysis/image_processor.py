@@ -5,7 +5,7 @@ from numba import njit
 from scipy.sparse.linalg import lsqr
 from scipy import sparse
 from scipy.optimize import minimize
-from scipy.signal import savgol_filter, find_peaks
+from scipy.ndimage import shift
 
 import datetime
 import xarray as xr
@@ -30,10 +30,22 @@ import platform
 name = platform.node()
 if name == 'GLaDOS':
     POINTS_FILE = 'A:\\Analysis_Code\\lattice_mask_pts.npy'
+    MASKS_FILE = 'A:\\Analysis_Code\\lattice_masks.npy'
+    POINTS_CROP_SAVE = 'A:\\autoanalysis_results\\masks_for_chimera\\maskPtsCrop.npy'
+    MASKS_CROP_SAVE = 'A:\\autoanalysis_results\\masks_for_chimera\\masks.npy'
+    SUBPIXEL_MASK_SAVE = 'A:\\autoanalysis_results\\masks_for_chimera\\subpixelMasks.npy'
 elif name == 'burrito':
     POINTS_FILE = '/mnt/heap/Analysis_Code/lattice_mask_pts.npy'
+    MASKS_FILE = '/mnt/heap/Analysis_Code/lattice_masks.npy'
+    POINTS_CROP_SAVE = '/mnt/heap/autoanalysis_results/masks_for_chimera/maskPtsCrop.npy'
+    MASKS_CROP_SAVE = '/mnt/heap/autoanalysis_results/masks_for_chimera/masks.npy'
+    SUBPIXEL_MASK_SAVE = '/mnt/heap/autoanalysis_results/masks_for_chimera/subpixelMasks.npy'
 else:
     POINTS_FILE = 'A:\\heap\\Analysis_Code\\lattice_mask_pts.npy'
+    MASKS_FILE = 'A:\\heap\\Analysis_Code\\lattice_masks.npy'
+    POINTS_CROP_SAVE = 'A:\\heap\\autoanalysis_results\\masks_for_chimera\\maskPtsCrop.npy'
+    MASKS_CROP_SAVE = 'A:\\heap\\autoanalysis_results\\masks_for_chimera\\masks.npy'
+    SUBPIXEL_MASK_SAVE = 'A:\\heap\\autoanalysis_results\\masks_for_chimera\\subpixelMasks.npy'
 POINTS = np.load(POINTS_FILE).reshape((48,48,2))
 POINTS = POINTS - POINTS[0,0]
 DXIDXL = POINTS[0,1,1] - POINTS[0,0,1]
@@ -49,6 +61,28 @@ ALL_POINTS_EXTENDED = np.stack((xl*DYIDXL + yl*DYIDYL + POINTS[0,0,0],xl*DXIDXL 
 SIGMA = 1.4
 KERNEL_SIZE = 9
 KERNEL = np.arange(-(KERNEL_SIZE//2), KERNEL_SIZE//2+1)
+
+## only for saving masks for chimera
+MASKS = np.load(MASKS_FILE)
+ALL_MASKS = MASKS.reshape(48,48,*CROP_SIZE)
+MASK_SUM = np.sum(ALL_MASKS[::2, ::3].reshape(-1,*CROP_SIZE), axis = 0)
+CROP_LEN = 6
+dxPix = np.array([-.05380925,  3.25157006]) #Lattice vectors in pixel units. y then x.
+dyPix = np.array([3.33617327, 0.10053675])
+dxPixTweez = np.array([-0.07403751, 3.24909247])
+dyPixTweez = np.array([3.33168806, 0.09773693])
+dxMHztweez = 1.924577613516135
+dyMHztweez = 1.9820215222031266
+dxMHz = np.sqrt(np.sum(dxPix**2)/np.sum(dxPixTweez**2))*dxMHztweez
+dyMHz = np.sqrt(np.sum(dyPix**2)/np.sum(dyPixTweez**2))*dyMHztweez
+Lat2Pix = np.array([dyPix, dxPix]).T # Transformation matrix from lattice coordinates to pixel coordinates
+Pix2Lat = np.linalg.inv(Lat2Pix) # Transformation matrix from pixel coordinates to lattice coordinates
+nMaskSets = 5
+xShiftsPix = np.linspace(-1/2, 1/2, nMaskSets)
+yShiftsPix = np.linspace(-1/2, 1/2, nMaskSets)
+pixCoords = np.dstack(np.meshgrid(yShiftsPix, xShiftsPix)).reshape((-1,2)) # subpixel mask coordinates in pixels
+MHzCoords = np.array([np.dot(Pix2Lat, pixCoord) for pixCoord in pixCoords]) * np.array([dyMHz, dxMHz]) # subpixel mask coordinates in MHz
+##
 
 @njit
 def get_gauss(subpixel_shift):
@@ -462,3 +496,50 @@ class ImageProcessor:
             threshold = self.default_threshold     
         counts_thresholded = counts > threshold
         return counts_thresholded, threshold
+    
+
+    def save_masks(self):
+        # process mean image
+        data, images = self.data_handler.get_raw_data()
+        pics_per_rep = data['Andor']['Pictures-Per-Repetition'][0]
+        images = images.reshape((-1, pics_per_rep, IMAGE_SIZE[0], IMAGE_SIZE[1]))
+        meanimg = np.mean(images[:,0], axis = 0)
+        bgrow = np.mean(meanimg[0:30],axis=0)
+        meanimg = np.array([i-bgrow for i in meanimg])
+        bgcol = np.mean(meanimg[:,0:30],axis=1)
+        meanimg = meanimg.transpose()
+        meanimg = np.array([i - bgcol for i in meanimg])
+        meanimg = meanimg.transpose()
+        mimg =  meanimg[self.roi[0]:self.roi[1], self.roi[2]:self.roi[3]]
+
+        # get array offset from mean image by rolling masks
+        def maxCoord(x,y):
+            return np.sum(np.roll(MASK_SUM,(y,x), axis = (0,1))*mimg)
+        maxCoordVectorized = np.vectorize(maxCoord)
+        if self.crop_enabled:
+            offset = self.offset
+        else:
+            offset = self.offset_switch
+        x = np.arange(-5,5) + np.round(offset[1]).astype(int)
+        y = np.arange(-5,5) + np.round(offset[0]).astype(int)
+        xg, yg = np.meshgrid(x, y)
+        coord = np.argmax(maxCoordVectorized(xg,yg))
+        xRoll = xg.flatten()[coord]
+        yRoll = yg.flatten()[coord]
+
+        # save cropped points and masks
+        fullImagePtsShifted = ALL_POINTS+np.array([yRoll+self.roi[0], xRoll+self.roi[2]])[None,:]
+        fullImagePtsCrop = (np.hstack(np.round((fullImagePtsShifted,fullImagePtsShifted)))[:,[0,2,1,3]]+np.array([-CROP_LEN,CROP_LEN,-CROP_LEN,CROP_LEN])[None,:]).astype(np.int16)
+        fullImageMasksShifted = np.roll(np.pad(MASKS, ((0,0),(self.roi[0], IMAGE_SIZE[0]-self.roi[1]),(self.roi[2], IMAGE_SIZE[1]-self.roi[3]))), (yRoll,xRoll), axis = (1,2))
+        fullImageMasksCropped = np.empty((fullImagePtsCrop.shape[0], 2*CROP_LEN, 2*CROP_LEN))
+        for i, crp in enumerate(fullImagePtsCrop):
+            fullImageMasksCropped[i] = fullImageMasksShifted[i, crp[0]:crp[1], crp[2]:crp[3]]
+        np.save(POINTS_CROP_SAVE, fullImagePtsCrop.astype(np.int16), allow_pickle=False)
+        np.save(MASKS_CROP_SAVE, (100*fullImageMasksCropped).astype(np.int16), allow_pickle=False) #convert to percentage as int16 for speed in chimera
+
+        # save subpixel masks
+        masksLoadSum = np.pad(MASK_SUM, ((self.roi[0], IMAGE_SIZE[0]-self.roi[1]),(self.roi[2], IMAGE_SIZE[1]-self.roi[3])))/2
+        masksList = np.array([shift(masksLoadSum, np.array([yRoll, xRoll])+pix) for pix in pixCoords])
+        subpixShift = pixCoords[(meanimg*masksList).sum(axis = (1,2)).argmax()]
+        masksListCentered = np.array([shift(masksLoadSum, np.array([yRoll, xRoll])+pix+subpixShift) for pix in pixCoords])
+        np.save(SUBPIXEL_MASK_SAVE, (100*masksListCentered).astype(np.int16), allow_pickle=False)

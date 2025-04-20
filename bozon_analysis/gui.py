@@ -1,5 +1,5 @@
 from PyQt5.QtWidgets import (
-    QMainWindow, QVBoxLayout, QWidget, QTextEdit, QPushButton, 
+    QMainWindow, QVBoxLayout, QWidget, QGridLayout, QPushButton, 
     QInputDialog, QSplitter, QHBoxLayout, QLabel, QFileDialog
 )
 from PyQt5.QtCore import Qt
@@ -9,12 +9,9 @@ import logging
 
 from bozon_analysis.data_handler import DataHandler
 from bozon_analysis.image_processor import ImageProcessor
-from bozon_analysis.socket_handler import SocketHandler
+from bozon_analysis.socket_handler import SocketHandler, format_message
 from bozon_analysis.analysis_handler import AnalysisHandler
 from bozon_analysis.gui_logger import QTextEditLogger
-
-from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
-from matplotlib.figure import Figure
 
 import threading
 
@@ -73,11 +70,17 @@ class MainWindow(QMainWindow):
         self.file_button_container.setLayout(self.file_button_layout)
         self.process_image_button = QPushButton("Only process images", self)
         self.process_image_button.clicked.connect(self.process_image_button_press)
-        self.run_analysis_button = QPushButton("Run analysis", self)
-        self.run_analysis_button.clicked.connect(self.run_analysis_button_press)
-        self.analysis_button_layout = QVBoxLayout()
-        self.analysis_button_layout.addWidget(self.process_image_button)
-        self.analysis_button_layout.addWidget(self.run_analysis_button)
+        self.analyze_data_button = QPushButton("Only analyze data", self)
+        self.analyze_data_button.clicked.connect(self.analyze_data_button_press)
+        self.save_mask_button = QPushButton("Save masks", self)
+        self.save_mask_button.clicked.connect(self.save_mask_button_press)
+        self.process_and_analyze_button = QPushButton("Process and analyze", self)
+        self.process_and_analyze_button.clicked.connect(self.process_and_analyze_button_press)
+        self.analysis_button_layout = QGridLayout()
+        self.analysis_button_layout.addWidget(self.process_image_button, 0, 0)
+        self.analysis_button_layout.addWidget(self.analyze_data_button, 0, 1)
+        self.analysis_button_layout.addWidget(self.save_mask_button, 1, 0)
+        self.analysis_button_layout.addWidget(self.process_and_analyze_button, 1, 1)
         self.analysis_button_container = QWidget()
         self.analysis_button_container.setLayout(self.analysis_button_layout)
 
@@ -247,18 +250,50 @@ class MainWindow(QMainWindow):
         try:
             self.image_processor.process_images()
         except Exception as e:
-            logging.error(f"Unexpected error running analysis: {e}")
-    
-    def run_analysis_button_press(self):
+            logging.error(f"Unexpected error processing images: {e}")
+
+    def analyze_data_button_press(self):
         if self.analysis_thread:
             self.analysis_thread.join()
-        self.analysis_thread = threading.Thread(target = self.run_analysis, daemon=True)
+        self.analysis_thread = threading.Thread(target = self.analyze_data, daemon=True)
+        self.analysis_thread.start()
+    
+    def analyze_data(self):
+        try:
+            self.analysis_handler.run_analysis_script()
+        except Exception as e:
+            logging.error(f"Unexpected error running analysis: {e}")
+
+    def save_mask_button_press(self):
+        if self.analysis_thread:
+            self.analysis_thread.join()
+        self.analysis_thread = threading.Thread(target = self.save_mask, daemon=True)
+        self.analysis_thread.start()
+    
+    def save_mask(self):
+        try:
+            self.image_processor.save_masks()
+            if self.socket_handler.connected:
+                logging.info("Successfully saved masks. Alerting server.")
+                self.socket_handler.send_msg(format_message("new masks"))
+            else:
+                logging.warning("Disconnected from server. Unable to notify of new masks.")
+        except Exception as e:
+            logging.error(f"Unexpected error running analysis: {e}")
+    
+    def process_and_analyze_button_press(self):
+        if self.analysis_thread:
+            self.analysis_thread.join()
+        self.analysis_thread = threading.Thread(target = self.process_and_analyze, daemon=True)
         self.analysis_thread.start()
 
-    def run_analysis(self):
+    def process_and_analyze(self):
         """Run the analysis and update the GUI with results and plots."""
         try:
             self.image_processor.process_images()
+        except Exception as e:
+            logging.error(f"Unexpected error processing images: {e}")
+        try:
             self.analysis_handler.run_analysis_script()
         except Exception as e:
             logging.error(f"Unexpected error running analysis: {e}")
