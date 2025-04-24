@@ -103,10 +103,10 @@ class ImageProcessor:
         self._deconvolution_enabled = False
         self._all_sites_enabled = False
 
-        self.roi = [50, 50+CROP_SIZE[0], 36, 36+CROP_SIZE[1]]
+        self.roi = [55, 55+CROP_SIZE[0], 36, 36+CROP_SIZE[1]]
         
-        self.offset = np.array([0, 0])
-        self.offset_switch = np.array([0, 0])  # holds value for switching between crop and uncropped mode
+        self.offset = np.array([28, 25])
+        self.offset_switch = self.offset+self.roi[0::2]  # holds value for switching between crop and uncropped mode
 
         self._default_threshold = 10
 
