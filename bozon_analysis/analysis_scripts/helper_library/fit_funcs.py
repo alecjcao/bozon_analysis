@@ -27,3 +27,6 @@ def triple_lorentzian(f, f0, deltaf, A, Al, Ar, gamma, gammas, y0):
 
 def gaussian(x, x0, sigma, A, y0):
     return A*np.exp(-(x-x0)**2/(2*sigma**2)) + y0
+
+def generalized_gaussian(x, x0, sigma, A, alpha):
+    return A*np.exp(-abs((x-x0)/sigma)**alpha)
