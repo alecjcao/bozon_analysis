@@ -42,8 +42,13 @@ def main(ds):
             popt, _ = curve_fit(fit_funcs.cosine, xu, yu, p0 = guess)
             xp = np.linspace(np.min(xu), np.max(xu), 100)
             ax.plot(xp, fit_funcs.cosine(xp, *popt), 'r-')
-            ax.axvline(popt[0], color = 'k', ls = '--')
-            result['axial_phase_set'] = popt[0]
+            x0 = popt[0]
+            if x0<0:
+                x0 += (abs(x0)//(1/popt[1])+1)*(1/popt[1])
+            if x0>10:
+                x0 = x0%(1/popt[1])
+            ax.axvline(x0, color = 'k', ls = '--')
+            result['axial_phase_set'] = np.round(x0, decimals=3)
         if key[0] == 'spec3p1':
             guess = [xu[np.argmax(yu)], .06, np.max(yu), 0.05, 0, .02, .02, 0]
             popt, _ = curve_fit(fit_funcs.triple_lorentzian, xu, yu, p0 = guess)

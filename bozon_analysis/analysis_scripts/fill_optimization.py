@@ -25,11 +25,12 @@ def main(ds):
         ax.set_ylabel('Survival')
         if key[0] in peak_variables:
             guess = [xu[np.argmax(yu)], (np.max(xu)-np.min(xu))/2, np.max(yu), 2]
-            popt, _ = curve_fit(fit_funcs.generalized_gaussian, xu, yu, p0 = guess)
+            bounds = ([np.min(xu), 0, 0, 0], [np.max(xu), np.inf, 1, np.inf])
+            popt, _ = curve_fit(fit_funcs.generalized_gaussian, xu, yu, p0 = guess, bounds = bounds)
             xp = np.linspace(np.min(xu), np.max(xu), num = 1000)
             plt.plot(xp, fit_funcs.generalized_gaussian(xp, *popt), 'r-')
             ax.axvline(popt[0], color = 'k', ls = '--')
-            result[key[0]] = popt[0]
+            result[key[0]] = np.round(popt[0], decimals=5)
     else:
         pass
 
