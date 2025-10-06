@@ -21,6 +21,7 @@ def main(ds):
         ax.plot(mean_survival_site, 'o')
         ax.set_xlabel('Site')
         ax.set_ylabel('Survival')
+        ax.annotate(f'Surival = {np.mean(mean_survival_site):.4f}', (0.02, 1.02), xycoords='axes fraction',)
         # im = ax.imshow(mean_survival_site.reshape(24, 16), 
         #                vmin = max(0,np.min(mean_survival_site)), vmax = min(1,np.max(mean_survival_site)), cmap = 'Blues')
         # ax.set_xlabel('x')
@@ -40,12 +41,13 @@ def main(ds):
         ax.errorbar(xu, yu, yerr = yu_e, fmt = 'o')
         ax.set_xlabel(key[0])
         ax.set_ylabel('Survival')
+        ax.set_ylim(0,1)
         if key[0] == 'ryd_freq' or key[0] == 'ryd_det':
             T = ds['uvtime'].values[0]
             guess = [xu[np.argmax(yu)], -1, 2*np.pi/(2*T), T, 1]
             popt, _ = curve_fit(fit_funcs.rabi_resonance, xu, yu, p0 = guess)
             xp = np.linspace(np.min(xu), np.max(xu), 100)
-            ax.plot(xp, fit_funcs.rabi_resonance(xp, *popt), 'r-')
+            ax.plot(xp, fit_funcs.rabi_resonance(xp, *popt), 'r-', maxfev = 100000)
             ax.axvline(popt[0], color = 'k', ls = '--')
             result[key[0]] = popt[0]
         if key[0] == 'uvtime':

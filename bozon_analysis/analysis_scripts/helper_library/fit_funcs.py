@@ -12,6 +12,9 @@ def cosine(x, x0, f, A, y0):
 def sine(x, x0, f, A, y0):
     return A*np.sin(np.pi*f*(x-x0))**2+y0
 
+def cosine_nooffset(x, f, A, y0):
+    return A*np.cos(np.pi*f*x)**2+y0
+
 def exponential(t, tau, A, y0):
     return A*np.exp(-t/tau)+y0
 
@@ -30,3 +33,9 @@ def gaussian(x, x0, sigma, A, y0):
 
 def generalized_gaussian(x, x0, sigma, A, alpha):
     return A*np.exp(-abs((x-x0)/sigma)**alpha)
+
+def gaussian_cosine(t, f, A, tau, phi, y0):
+    return A*np.exp(-(t/tau)**2)*np.cos(2*np.pi*f*t + phi)/2+y0
+
+def fidelity_fit(x, F, A):
+    return A*F**x

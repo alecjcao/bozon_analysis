@@ -291,10 +291,10 @@ class ImageProcessor:
                 rerng_active = bool(data['Gmoog-Parameters']['rearranger_active'][0])
             else:
                 rerng_active = True
-            if 'enable_rearrange' in data['Master-Parameters']['Variables'].keys():
-                rerng_enabled = bool(data['Master-Parameters']['Variables']['enable_rearrange'][0])
-            else:
-                rerng_enabled = True
+            # if 'enable_rearrange' in data['Master-Parameters']['Variables'].keys():
+            #     rerng_enabled = bool(data['Master-Parameters']['Variables']['enable_rearrange'][0])
+            # else:
+            rerng_enabled = True
             rearranged = rerng_in_master and rerng_active and rerng_enabled
             if rearranged:
                 gmoog_script = data['Gmoog-Parameters']['Gmoog-Script'][:]
@@ -354,8 +354,8 @@ class ImageProcessor:
         self.ax[1,0].set_yscale('log')
         self.ax[1,0].set_xlim(-20, 200)
         self.ax[1,1].cla()
-        self.ax[1,1].plot(np.mean(detections[0, :16*24], axis = -1), label = 'fill')
-        survival_mean = np.nansum(detections[-1, :len(target_points)], axis = -1)/np.nansum(detections[-2, :len(target_points)], axis = -1)
+        self.ax[1,1].plot(np.mean(detections[0, :, :16*24], axis = -1), label = 'fill')
+        survival_mean = np.nansum(detections[-1, :, :len(target_points)], axis = -1)/np.nansum(detections[-2, :, :len(target_points)], axis = -1)
         survival_mean[np.isnan(survival_mean)] = 0
         self.ax[1,1].plot(survival_mean, label = 'survival')
         self.ax[1,1].legend()

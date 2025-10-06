@@ -178,5 +178,6 @@ class DataHandler(QObject):
         for i in ['yyyy', 'yymm', 'yymmdd']:
             path = os.path.join(path, max(os.listdir(path)))
         path = os.path.join(path, 'image_processing_summary')
-        max_file = max([int(re.search('summary_(.*).png', f).group(1)) for f in os.listdir(path)])
+        
+        max_file = max([int(re.search('summary_(.*).png', f).group(1)) for f in os.listdir(path) if f.endswith('.png')])
         self.figure_saved.emit(os.path.join(path, f'summary_{max_file}.png'))

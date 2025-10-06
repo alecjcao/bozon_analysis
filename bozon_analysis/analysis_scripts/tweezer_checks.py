@@ -20,6 +20,7 @@ def main(ds):
         mean_survival_site = np.nanmean(survival, axis = 0)
         im = ax.imshow(mean_survival_site.reshape(24, 16), 
                        vmin = max(0,np.min(mean_survival_site)), vmax = min(1,np.max(mean_survival_site)), cmap = 'Blues')
+        ax.annotate(f'Surival = {np.mean(mean_survival_site):.4f}', (0.02, 1.02), xycoords='axes fraction', c = 'r')
         ax.set_xlabel('x')
         ax.set_ylabel('y')
         ax.axvline(8-1/2, color = 'k', ls = '--')
