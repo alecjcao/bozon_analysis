@@ -22,6 +22,10 @@ def rabi_resonance(f, f0, A, rabi, T, y0):
     rabi_gen = np.sqrt(rabi**2 + (2*np.pi*(f-f0))**2)
     return A*(rabi/rabi_gen)**2*np.sin(rabi_gen*T/2)**2 + y0
 
+def rabi_resonance_dp(f, f0, A, rabi, T, y0):
+    rabi_gen = np.sqrt(rabi**2 + (2*np.pi*2*(f-f0))**2)
+    return A*(rabi/rabi_gen)**2*np.sin(rabi_gen*T/2)**2 + y0
+
 def lorentzian(f, f0, A, gamma, y0):
     return A*gamma**2/(gamma**2 + (f-f0)**2) + y0
 

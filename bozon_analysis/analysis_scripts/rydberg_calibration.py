@@ -5,6 +5,8 @@ from bozon_analysis.analysis_scripts.helper_library import fit_funcs
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from scipy.fft import fft, fftfreq
 
+probe_shift_calibration = .0051
+
 def main(ds):
     fill = ds['fill'].values
     second = ds['second'].values
@@ -42,12 +44,12 @@ def main(ds):
         ax.set_xlabel(key[0])
         ax.set_ylabel('Survival')
         ax.set_ylim(0,1)
-        if key[0] == 'ryd_freq' or key[0] == 'ryd_det':
+        if key[0] == 'ryd_freq':
             T = ds['uvtime'].values[0]
-            guess = [xu[np.argmax(yu)], -1, 2*np.pi/(2*T), T, 1]
-            popt, _ = curve_fit(fit_funcs.rabi_resonance, xu, yu, p0 = guess)
+            guess = [xu[np.argmin(yu)], -1, 2*np.pi/(2*T), T, 1]
+            popt, _ = curve_fit(fit_funcs.rabi_resonance_dp, xu, yu, p0 = guess,  maxfev = 10000)
             xp = np.linspace(np.min(xu), np.max(xu), 100)
-            ax.plot(xp, fit_funcs.rabi_resonance(xp, *popt), 'r-', maxfev = 100000)
+            ax.plot(xp, fit_funcs.rabi_resonance_dp(xp, *popt), 'r-')
             ax.axvline(popt[0], color = 'k', ls = '--')
             result[key[0]] = popt[0]
         if key[0] == 'uvtime':
@@ -59,9 +61,17 @@ def main(ds):
             xp = np.linspace(np.min(xu), np.max(xu), 100)
             ax.plot(xp, fit_funcs.cosine(xp, *popt), 'r-')
             ax.axvline(1/(2*popt[1]), color = 'k', ls = '--')
-            result[key[0]] = 1/(2*popt[1])
+            result['ryd_freq'] = ds['ryd_freq'].values[0] + probe_shift_calibration*popt[1]**2
+            result['uvtime_pi'] = 1/(2*popt[1])
+        if key[0] == 'delayuv12' or key[0] == 'uv407delay':
+            guess = [xu[np.argmin(yu)], ds['uvtime'].values[0], np.min(yu)-np.max(yu), np.max(yu)]
+            popt, _ = curve_fit(fit_funcs.gaussian, xu, yu, p0 = guess)
+            xp = np.linspace(np.min(xu), np.max(xu), 100)
+            ax.plot(xp, fit_funcs.gaussian(xp, *popt), 'r-')
+            ax.axvline(popt[0], color = 'k', ls = '--')
+            result[key[0]] = popt[0]
         if key[0] == 'time407':
-            guess = [(yu[0]-yu[1])/yu[0], yu[0], 0]
+            guess = [0.02, yu[0], 0]
             popt, _ = curve_fit(fit_funcs.exponential, xu, yu, p0 = guess)
             xp = np.linspace(np.min(xu), np.max(xu), 100)
             ax.plot(xp, fit_funcs.exponential(xp, *popt), 'r-')

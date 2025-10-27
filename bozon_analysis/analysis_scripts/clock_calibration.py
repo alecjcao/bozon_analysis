@@ -65,7 +65,7 @@ def main(ds):
             result[key[0]] = popt[0]
         elif key[0] == 'ramseytime':
             current_f = ds['spec3p0_bare'].values[0]
-            guess = [current_f - 11.75, 1, 0]
+            guess = [current_f - 11.68, 1, 0]
             popt, _ = curve_fit(fit_funcs.cosine_nooffset, xu, yu, p0 = guess,
                                 bounds = (0, (np.inf, 1, 1)))
             xp = np.linspace(np.min(xu), np.max(xu), 1000)
