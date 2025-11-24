@@ -273,11 +273,11 @@ class MainWindow(QMainWindow):
     def save_mask(self):
         try:
             self.image_processor.save_masks()
-            if self.socket_handler.connected:
-                logging.info("Successfully saved masks. Alerting server.")
-                self.socket_handler.send_msg(format_message("new masks"))
-            else:
-                logging.warning("Disconnected from server. Unable to notify of new masks.")
+            # if self.socket_handler.connected:
+            #     logging.info("Successfully saved masks. Alerting server.")
+            #     self.socket_handler.send_msg(format_message("new masks"))
+            # else:
+            #     logging.warning("Disconnected from server. Unable to notify of new masks.")
         except Exception as e:
             logging.error(f"Unexpected error running analysis: {e}")
     

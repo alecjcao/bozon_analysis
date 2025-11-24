@@ -64,18 +64,19 @@ def main(ds):
             result['ryd_freq'] = ds['ryd_freq'].values[0] + probe_shift_calibration*popt[1]**2
             result['uvtime_pi'] = 1/(2*popt[1])
         if key[0] == 'delayuv12' or key[0] == 'uv407delay':
-            guess = [xu[np.argmin(yu)], ds['uvtime'].values[0], np.min(yu)-np.max(yu), np.max(yu)]
+            guess = [xu[np.argmin(yu)], 0.05, np.min(yu)-np.max(yu), np.max(yu)]
             popt, _ = curve_fit(fit_funcs.gaussian, xu, yu, p0 = guess)
             xp = np.linspace(np.min(xu), np.max(xu), 100)
             ax.plot(xp, fit_funcs.gaussian(xp, *popt), 'r-')
             ax.axvline(popt[0], color = 'k', ls = '--')
             result[key[0]] = popt[0]
         if key[0] == 'time407':
-            guess = [0.02, yu[0], 0]
-            popt, _ = curve_fit(fit_funcs.exponential, xu, yu, p0 = guess)
+            guess = [0.03, yu[0], 0]
+            bounds = ((0,0,0), (np.inf,1,1))
+            popt, _ = curve_fit(fit_funcs.exponential, xu, yu, p0 = guess, bounds = bounds)
             xp = np.linspace(np.min(xu), np.max(xu), 100)
             ax.plot(xp, fit_funcs.exponential(xp, *popt), 'r-')
-            ax.axvline(popt[0], color = 'k', ls = '--')
+            # ax.axvline(popt[0], color = 'k', ls = '--')
             result[key[0]] = popt[0]*5
     else:
         pass

@@ -142,7 +142,9 @@ class SocketHandler(QObject):
                 try:
                     if ntpath.basename(msg_in['data']['file']) == "axial_phase.Config":
                         self.image_processor.save_masks()
-                        saved_masks = True
+                        # saved_masks = True
+                    if ntpath.basename(msg_in['data']['file']) == "image_baseline.Config":
+                        self.image_processor.save_bg_image()
                 except KeyError:
                     pass
                 except Exception as e:
@@ -150,9 +152,9 @@ class SocketHandler(QObject):
         if self.connected:
             logging.info(f"Sending result {json.dumps(result)} to server.")
             self.send_msg(format_message('update', result))
-            if saved_masks:
-                logging.info("Successfully saved masks. Alerting server.")
-                self.send_msg(format_message('new masks'))
+            # if saved_masks:
+            #     logging.info("Successfully saved masks. Alerting server.")
+            #     self.send_msg(format_message('new masks'))
         else:
             logging.warning("Disconnected from server. Couldn't send analysis results.")
 

@@ -37,9 +37,13 @@ if name == 'GLaDOS':
 elif name == 'burrito':
     POINTS_FILE = '/mnt/heap/Analysis_Code/lattice_mask_pts.npy'
     MASKS_FILE = '/mnt/heap/Analysis_Code/lattice_masks.npy'
-    POINTS_CROP_SAVE = '/mnt/heap/autoanalysis_results/masks_for_chimera/maskPtsCrop.npy'
-    MASKS_CROP_SAVE = '/mnt/heap/autoanalysis_results/masks_for_chimera/masks.npy'
-    SUBPIXEL_MASK_SAVE = '/mnt/heap/autoanalysis_results/masks_for_chimera/subpixelMasks.npy'
+    # POINTS_CROP_SAVE = '/mnt/heap/autoanalysis_results/masks_for_chimera/maskPtsCrop.npy'
+    # MASKS_CROP_SAVE = '/mnt/heap/autoanalysis_results/masks_for_chimera/masks.npy'
+    # SUBPIXEL_MASK_SAVE = '/mnt/heap/autoanalysis_results/masks_for_chimera/subpixelMasks.npy'
+    POINTS_CROP_SAVE = '/mnt/glados/Image Processing/maskPtsCrop.npy'
+    MASKS_CROP_SAVE = '/mnt/glados/Image Processing/masks.npy'
+    SUBPIXEL_MASK_SAVE = '/mnt/glados/Image Processing/subpixelMasks.npy'
+    BG_IMAGE_SAVE = '/mnt/glados/Image Processing/bgImg.npy'
 else:
     POINTS_FILE = 'A:\\heap\\Analysis_Code\\lattice_mask_pts.npy'
     MASKS_FILE = 'A:\\heap\\Analysis_Code\\lattice_masks.npy'
@@ -543,3 +547,10 @@ class ImageProcessor:
         subpixShift = pixCoords[(meanimg*masksList).sum(axis = (1,2)).argmax()]
         masksListCentered = np.array([shift(masksLoadSum, np.array([yRoll, xRoll])+pix+subpixShift) for pix in pixCoords])
         np.save(SUBPIXEL_MASK_SAVE, (100*masksListCentered).astype(np.int16), allow_pickle=False)
+
+    def save_bg_image(self):
+        _, images = self.data_handler.get_raw_data()
+        mimgFull = np.nanmean(images, axis = 0)
+        bgrow = np.nanmean(mimgFull[:30], axis = 0)
+        bgImg = np.tile(bgrow, (mimgFull.shape[0],1)).astype(np.int32)
+        np.save(BG_IMAGE_SAVE, bgImg, allow_pickle=False)
