@@ -113,6 +113,7 @@ class ImageProcessor:
         self.offset_switch = self.offset+self.roi[0::2]  # holds value for switching between crop and uncropped mode
 
         self._default_threshold = 10
+        self._use_default_threshold = False
 
         self.data_handler = data_handler
         self.figure, self.ax = plt.subplots(2,2, figsize = (6,6))
@@ -163,6 +164,13 @@ class ImageProcessor:
         except ValueError:
             raise ValueError("Threshold must be a positive number.")
 
+    @property
+    def use_default_threshold(self):
+        return self._use_default_threshold
+
+    @use_default_threshold.setter
+    def use_default_threshold(self, new_state):
+        self._use_default_threshold = new_state
     
     #### STATIC HELPER METHODS ####
 
@@ -492,12 +500,15 @@ class ImageProcessor:
             counts_scaled = (counts - counts_min) / (counts_max - counts_min) * 255
         else:
             counts_scaled = np.zeros_like(counts)
-        try:
-            threshold = threshold_minimum(counts_scaled.astype(np.uint8))
-            threshold = threshold / 255 * (counts_max - counts_min) + counts_min
-        except RuntimeError:
-            logging.warning(f"Couldn't find threshold. Using default {self.default_threshold}.")
-            threshold = self.default_threshold     
+        if not self._use_default_threshold:
+            try:
+                threshold = threshold_minimum(counts_scaled.astype(np.uint8))
+                threshold = threshold / 255 * (counts_max - counts_min) + counts_min
+            except RuntimeError:
+                logging.warning(f"Couldn't find threshold. Using default {self.default_threshold}.")
+                threshold = self.default_threshold     
+        else:
+            threshold = self.default_threshold
         counts_thresholded = counts > threshold
         return counts_thresholded, threshold
     

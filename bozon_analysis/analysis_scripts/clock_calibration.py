@@ -43,7 +43,8 @@ def main(ds):
         ax.set_ylim(0,1)
         if key[0] == 'spec3p0':
             T = ds['pitime'].values[0] * ds['clock_calib_pipulsenum'].values[0]
-            guess = [np.mean(xu), 1, 2*np.pi/(2*ds['pitime'].values[0]), T, 0]
+            # guess = [np.mean(xu), 1, 2*np.pi/(2*ds['pitime'].values[0]), T, 0]
+            guess = [xu[np.argmax(yu)], 1, 2*np.pi/(2*ds['pitime'].values[0]), T, 0]
             popt, _ = curve_fit(fit_funcs.rabi_resonance, xu, yu, p0 = guess, maxfev = 100000)
             xp = np.linspace(np.min(xu), np.max(xu), 100)
             ax.plot(xp, fit_funcs.rabi_resonance(xp, *popt), 'r-')
@@ -65,7 +66,7 @@ def main(ds):
             result[key[0]] = popt[0]
         elif key[0] == 'ramseytime':
             current_f = ds['spec3p0_bare'].values[0]
-            guess = [current_f - 11.64, 1, 0.5]
+            guess = [current_f - 11.38, 1, 0.5]
             popt, _ = curve_fit(fit_funcs.cosine_nooffset, xu, yu, p0 = guess,
                                 bounds = (0, (np.inf, 1, 1)))
             xp = np.linspace(np.min(xu), np.max(xu), 1000)

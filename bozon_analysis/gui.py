@@ -118,6 +118,11 @@ class MainWindow(QMainWindow):
         self.set_crop_button.clicked.connect(self.set_crop_button_press)
         self.set_offset_button = QPushButton("Set offset", self)
         self.set_offset_button.clicked.connect(self.set_offset_button_press)
+        self.toggle_threshold_button = QPushButton("Use manual threshold", self)
+        self.toggle_threshold_button.clicked.connect(self.toggle_threshold_button_press)
+        self.set_manual_threshold_button = QPushButton("Set manual threshold", self)
+        self.set_manual_threshold_button.clicked.connect(self.set_manual_threshold_button_press)
+
 
         #### Set up main window ####
         self.data_handler_button_layout = QHBoxLayout()
@@ -135,6 +140,8 @@ class MainWindow(QMainWindow):
         self.image_processor_button_layout.addWidget(self.enable_all_sites_button)
         self.image_processor_button_layout.addWidget(self.set_crop_button)
         self.image_processor_button_layout.addWidget(self.set_offset_button)
+        self.image_processor_button_layout.addWidget(self.toggle_threshold_button)
+        self.image_processor_button_layout.addWidget(self.set_manual_threshold_button)
         self.image_processor_button_container = QWidget()  # Wrap in a QWidget to insert into vertical layout
         self.image_processor_button_container.setLayout(self.image_processor_button_layout)
 
@@ -302,4 +309,14 @@ class MainWindow(QMainWindow):
         pixmap = QPixmap(fig_path)
         self.image_process_canvas.setPixmap(pixmap)
 
-    
+    def toggle_threshold_button_press(self):
+        self.image_processor.use_default_threshold = not self.image_processor.use_default_threshold
+        if self.image_processor.use_default_threshold:
+            self.toggle_threshold_button.setText('Use automatic threshold')
+        else:
+            self.toggle_threshold_button.setText('Use manual threshold')
+
+    def set_manual_threshold_button_press(self):
+        text, ok = QInputDialog.getText(self, "Input Dialog", "Enter threshold:")
+        if ok and text:
+            self.image_processor.default_threshold = text
